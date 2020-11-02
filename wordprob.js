@@ -1,3 +1,10 @@
+/*
+  The algorithms for rewriting system of finitely presented monoids
+  used here are based on the text of
+  C. Sims. "Computation with Finitely Presented Groups",
+  Encycropedia of Mathematics and its Applications, Cambridge University Press, (1994).
+ */
+
 class Relation {
 	constructor(x, y) {
 		this.first = x;
