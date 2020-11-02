@@ -222,7 +222,8 @@
 				for(const box of myrels) {
 					if(box.checked) {
 						name_cand += counter + 1;
-						newrellist.push(mon.relations[counter]);
+						let reltoadd = mon.relations[counter];
+						newrellist.push(new Relation(reltoadd.first, reltoadd.second));
 					}
 					counter++;
 				}
