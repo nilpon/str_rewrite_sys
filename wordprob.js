@@ -22,11 +22,11 @@ function shortlex_order(a, b)
   }
 }
 
-
 class Monoid {
 	constructor() {
 		this.relations = [];
 		this.relstack = [];
+		this.resolve_count = 0;
 	}
   
   reduce_word(w) {
@@ -81,12 +81,15 @@ class Monoid {
         }
       }
     }
+		this.resolve_count++;
   }
 
-  resolve_overlap(reli, relj) {
+  resolve_overlap(reli, relj, overlap_limit) {
     // if reli or relj is inactivated, the 'for' statement automatically breaks
     // since inactivated relator's .first == ""
     for(let k = 1; k < reli.first.length && k < relj.first.length; k++) {
+			// ignore long overlap if the length limit is specified
+			if(overlap_limit && reli.first.length + relj.first.length - k > overlap_limit) continue;
       if(reli.first.substr(reli.first.length - k) === relj.first.substr(0, k)) {
         this.relstack.push(new Relation(reli.first.substr(0, reli.first.length - k) + relj.second, reli.second + relj.first.substr(k)));
         this.resolve_relstack();
@@ -94,11 +97,13 @@ class Monoid {
     }
   }
   
-  Knuth_Bendix(maxrelation = 100)
+  Knuth_Bendix(maxresolution = 10000, overlap_limit = 0)
     {
       this.relstack = this.relations.slice();
       this.relstack.reverse(); // so that popping order coincide with relation's order
       this.relations.splice(0); // clear all
+
+			this.resolve_count = 0;
       
       this.resolve_relstack();
 
@@ -107,13 +112,21 @@ class Monoid {
         let j = 0;
         let reli = this.relations[i];
         
-        if(this.relations.length > maxrelation) break;
+        if(maxresolution && this.resolve_count > maxresolution) break;
+				if(overlap_limit && overlap_limit < reli.first.length) {
+					i++;
+					continue;
+				}
         while(j <= i && reli.first.length) {
           let relj = this.relations[j];
-          if(this.relations.length > maxrelation) break;
+          if(maxresolution && this.resolve_count > maxresolution) break;
+					if(overlap_limit && overlap_limit < relj.first.length) {
+						j++;
+						continue;
+					}
 
-          this.resolve_overlap(reli, relj);
-          if(j < i) this.resolve_overlap(relj, reli);
+          this.resolve_overlap(reli, relj, overlap_limit);
+          if(j < i) this.resolve_overlap(relj, reli, overlap_limit);
           j++;
         }
         i++;
@@ -123,8 +136,6 @@ class Monoid {
       this.relations = this.relations.filter( function (rel) {
         return rel.first;
       });
-      
-      return this.relations.length <= maxrelation;
     }
 
   confluence() {

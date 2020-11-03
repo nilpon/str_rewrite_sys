@@ -26,9 +26,14 @@
 	monlist.push(new Monoid);
 	monnamelist.push("monoid0");
 	let mon = monlist[0];
+	let resol_max = 10000;
+	let max_overlap = 50;
+
+
 	let tab_working_area = Tab.new("working_area");
 	let page_relation = construct_relation_page();
 	let page_calc = construct_calc_page();
+	let page_conf = construct_config_page();
 	let page_save = construct_save_page();
 
 	Tab.onclick(tab_working_area, page_relation);
@@ -43,6 +48,7 @@
 		txtbox.setAttribute("type", "text");
 		txtbox.setAttribute("id", id);
 		txtbox.setAttribute("value", value);
+		txtbox.setAttribute("spellcheck", false);
 		if(onfocus) {
 			txtbox.setAttribute("onfocus", onfocus);
 		}
@@ -101,6 +107,31 @@
 		set_button(cntarea, "インポート", "btn_import()");
 
 		return Tab.newpage(tab_working_area, "セーブ", cntarea.innerHTML, btn_export);
+	}
+
+	function construct_config_page() {
+		let cntarea = document.createElement("div");
+
+		set_text(cntarea, "Knuth-Bendix procedure の計算量制御");
+		set_br(cntarea);
+		set_text(cntarea, "overlap解消処理の最大実行回数(0は無制限):");
+		set_textbox(cntarea, "resol_limit_txt", "" + resol_max);
+		set_br(cntarea);
+		set_text(cntarea, "長いoverlapは無視する(0は無制限):");
+		set_textbox(cntarea, "overlap_limit_txt", "" + max_overlap);
+		set_button(cntarea, "決定", "btn_set_limit()");
+		set_br(cntarea);
+		set_text(cntarea, "！注意！");
+		set_br(cntarea);
+		set_text(cntarea, "※値が大きい(特に無制限だ)と処理が永遠に終わらないかもしれません！");
+		set_br(cntarea);
+		set_text(cntarea, "※値に関わらず永遠に終わらない例もあります");
+		set_br(cntarea);
+		set_text(cntarea, "※逆に値が小さいと合流的にならないかもしれません！");
+		set_br(cntarea);
+		set_text(cntarea, "※でもmonoidとして不変なことはいつも保証されるよ！(ﾟ∀ﾟ∩");
+
+		return Tab.newpage(tab_working_area, "設定", cntarea.innerHTML, show_cur_limit);
 	}
 
 	function construct_calc_page() {
@@ -179,7 +210,7 @@
 	}
 
 	function btn_KB() {
-		mon.Knuth_Bendix(10000);
+		mon.Knuth_Bendix(resol_max, max_overlap);
 		page_update();
 	}
 
@@ -376,6 +407,22 @@
 
 				alert("インポートしました！");
 			}
+		}
+	}
+
+	function show_cur_limit() {
+		document.getElementById("resol_limit_txt").value = "" + resol_max;
+		document.getElementById("overlap_limit_txt").value = "" + max_overlap;
+	}
+
+	function btn_set_limit() {
+		let new_resol_limit = parseInt(document.getElementById("resol_limit_txt").value);
+		let new_overl_limit = parseInt(document.getElementById("overlap_limit_txt").value);
+
+		// luckly, NaN >= 0 is false!
+		if(new_resol_limit >= 0 && new_overl_limit >= 0) {
+			resol_max = new_resol_limit;
+			max_overlap = new_overl_limit;
 		}
 	}
 
