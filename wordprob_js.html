@@ -4,6 +4,8 @@
 		<title>Word Problem</title>
 		<meta charset="utf-8"/>
 		<script src="wordprob.js"></script>
+		<script src="tab.js"></script>
+		<link rel="stylesheet" href=wordprob.css>
 	</head>
 	<body>
 	<h1>Monoid書換え系シミュレータ</h1>
@@ -14,37 +16,98 @@
 	<input type="button" onclick="btn_change_monoidname()" value="名前変更">
 	<input type="button" onclick="btn_new_monoid()" value="新規">
 	<input type="button" onclick="btn_remove_monoid()" value="削除">
-	<input type="button" onclick="btn_import()" value="インポート">
-	<input type="button" onclick="btn_export()" value="エクスポート">
-
-	<div id="export_area"></div>
 	
-	<form id="relation">
-		関係式:<input type="text" id="relation_left" value=""> = <input type="text" id="relation_right" value="">
-		<input type="button" onclick="btn_add_relation()" value="追加">
-	</form>
-	<div id="reduced_word">
-		<input type="button" onclick="btn_reduce()" value="簡約">
-		<input type="text" id="input_word" value=""> = 
-	</div>
-	<h2>関係式一覧</h2>
-	<form id="manipulate_mon">
-		<input type="button" onclick="btn_sort()" value="整列">
-		<input type="button" onclick="btn_KB()" value="Knuth-Bendix">
-		<input type="button" onclick="btn_selall()" value="全選択">
-		<input type="button" onclick="btn_erase()" value="消去">
-		<input type="button" onclick="btn_confluence()" value="合流的か？">
-		<input type="button" onclick="btn_gen_submon()" value="派生Monoid生成">
-	</form>
-	<div id="relation_view"></div>
+	<hr>
+
+	<div id="working_area"></div>
+
 	<script language="javascript" type="text/javascript">
 	let monlist = [], monnamelist = [];
 	monlist.push(new Monoid);
 	monnamelist.push("monoid0");
 	let mon = monlist[0];
-	const reduce_form_html = document.getElementById("reduced_word").innerHTML;
-	
-	page_update();
+	let tab_working_area = Tab.new("working_area");
+	let page_relation = construct_relation_page();
+	let page_calc = construct_calc_page();
+	let page_save = construct_save_page();
+
+	Tab.onclick(tab_working_area, page_relation);
+
+
+	function set_text(elem, txt) {
+		elem.appendChild(document.createTextNode(txt));
+	}
+
+	function set_textbox(elem, id, value, onfocus = null, readonly = false) {
+		let txtbox = document.createElement("input");
+		txtbox.setAttribute("type", "text");
+		txtbox.setAttribute("id", id);
+		txtbox.setAttribute("value", value);
+		if(onfocus) {
+			txtbox.setAttribute("onfocus", onfocus);
+		}
+		if(readonly) {
+			txtbox.readOnly = true;
+		}
+
+		elem.appendChild(txtbox);
+	}
+
+	function set_button(elem, txt, onclick) {
+		let btn = document.createElement("input");
+		btn.setAttribute("type", "button");
+		btn.setAttribute("value", txt);
+		btn.setAttribute("onclick", onclick);
+
+		elem.appendChild(btn);
+	}
+
+	function set_div(elem, id) {
+		let div = document.createElement("div");
+		div.setAttribute("id", id);
+		elem.appendChild(div);
+	}
+
+	function set_br(elem) {
+		elem.appendChild(document.createElement("br"));
+	}
+
+	function construct_relation_page() {
+		let cntarea = document.createElement("div");
+
+		set_text(cntarea, "新しい関係式:");
+		set_textbox(cntarea, "relation_left", "");
+		set_text(cntarea, " = ");
+		set_textbox(cntarea, "relation_right", "");
+		set_button(cntarea, "追加", "btn_add_relation()");
+		set_br(cntarea);
+
+		set_button(cntarea, "整列", "btn_sort()");
+		set_button(cntarea, "Knuth-Bendix", "btn_KB()");
+		set_button(cntarea, "全選択", "btn_selall()");
+		set_button(cntarea, "消去", "btn_erase()");
+		set_button(cntarea, "合流的か？", "btn_confluence()");
+		set_button(cntarea, "派生Monoid生成", "btn_gen_submon()");
+
+		set_div(cntarea, "relation_view");
+		return Tab.newpage(tab_working_area, "関係式一覧", cntarea.innerHTML, page_update);
+	}
+
+	function construct_save_page() {
+		let cntarea = document.createElement("div");
+
+		set_text(cntarea, "セーブデータ:");
+		set_textbox(cntarea, "save_txtbox", "", "this.select()");
+		set_button(cntarea, "インポート", "btn_import()");
+
+		return Tab.newpage(tab_working_area, "セーブ", cntarea.innerHTML, btn_export);
+	}
+
+	function construct_calc_page() {
+		let cntarea = document.createElement("div");
+
+		return Tab.newpage(tab_working_area, "計算", cntarea.innerHTML);
+	}
 
 	function btn_add_relation() {
 		let rel_left = sanitize(document.getElementById("relation_left").value);
@@ -53,38 +116,45 @@
 		page_update();
 	}
 
-	function btn_reduce() {
-		let w = sanitize(document.getElementById("input_word").value);
-		document.getElementById("reduced_word").innerHTML = reduce_form_html + mon.reduce_word(w);
-		document.getElementById("input_word").value = w;
-	}
-
 	function page_update() {
 		show_monoid_list();
 		set_mon();
 		show_relations();
-		document.getElementById("export_area").innerHTML = ""; //close export area
 	}
 
 	function show_relations() {
-		let innhtml = "<form name=\"rel_checkboxes\">";
-		let counter = 1;
+		let rel_view = document.getElementById("relation_view");
 
-		for(const rel of mon.relations) {
-			innhtml += "<input type=\"checkbox\" name=\"rels\">";
-			innhtml += counter + ". ";
-			if(rel.second.length) {
-				innhtml += rel.first + " = " + rel.second + "<br>";
+		if(rel_view) {
+			rel_view.innerHTML = "";
+			let rel_view_form = document.createElement("form");
+			rel_view_form.setAttribute("name", "rel_checkboxes");
+
+			let counter = 1;
+			for(const rel of mon.relations) {
+				let chkbox = document.createElement("input");
+				chkbox.setAttribute("type", "checkbox");
+				chkbox.setAttribute("name", "rels");
+				rel_view_form.appendChild(chkbox);
+				
+				let relation_txt = "" + counter + ". ";
+				if(rel.second.length) {
+					relation_txt += rel.first + " = " + rel.second;
+				}
+				else {
+					relation_txt += rel.first + " = ε";
+				}
+				rel_view_form.appendChild(document.createTextNode(relation_txt));
+				rel_view_form.appendChild(document.createElement("br"));
+
+				counter++;
 			}
-			else {
-				innhtml += rel.first + " = ε<br>";
+			if(!mon.relations.length) {
+				rel_view_form.appendChild(document.createTextNode("なし"));
 			}
-			counter++;
+
+			rel_view.appendChild(rel_view_form);
 		}
-		if(!mon.relations.length) innhtml += "なし";
-		innhtml += "</form>";
-
-		document.getElementById("relation_view").innerHTML = innhtml;
 	};
 
 	function show_monoid_list() {
@@ -109,7 +179,7 @@
 	}
 
 	function btn_KB() {
-		mon.Knuth_Bendix();
+		mon.Knuth_Bendix(10000);
 		page_update();
 	}
 
@@ -240,7 +310,8 @@
 	}
 
 	function sanitize(text) {
-		return text.replace(/[\x00-\x20<=>"'&\x7f-\x9f]/g, "");
+		if(text) return text.replace(/[\x00-\x20<=>"'&\x7f-\x9f]/g, "");
+		else return "";
 	}
 
 	// format: monname0<rel0f=rel0s&rel1f=rel1s&...>monname1...
@@ -255,24 +326,13 @@
 		}
 		monlist_data = monlist_data.replace(/&>/g, ">");
 
-		let txtbox = document.getElementById("export_txtbox");
+		let txtbox = document.getElementById("save_txtbox");
 
-		if(!txtbox) {
-			txtbox = document.createElement("input");
-			txtbox.setAttribute("type", "text");
-			txtbox.setAttribute("id", "export_txtbox");
-			txtbox.readOnly = true;
-			txtbox.setAttribute("onfocus", "this.select()");
-		
-			let export_area = document.getElementById("export_area");
-			export_area.innerHTML = "エクスポートデータ:";
-			export_area.appendChild(txtbox);
-		}
-		txtbox.setAttribute("value", monlist_data);
+		if(txtbox) txtbox.setAttribute("value", monlist_data);
 	}
 
 	function btn_import() {
-		let importraw = window.prompt("前回のデータをインポート", "");
+		let importraw = document.getElementById("save_txtbox").value;
 		if(importraw) {
 			let import_monlist = importraw.split(">");
 			let new_monlist = [];
@@ -308,9 +368,14 @@
 				}
 				new_monlist.push(mymon);
 			}
-			monlist = new_monlist;
-			monnamelist = new_monnamelist;
-			monoid_list_select(0);
+
+			if(new_monlist.length) {
+				monlist = new_monlist;
+				monnamelist = new_monnamelist;
+				monoid_list_select(0);
+
+				alert("インポートしました！");
+			}
 		}
 	}
 

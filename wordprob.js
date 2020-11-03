@@ -22,6 +22,7 @@ function shortlex_order(a, b)
   }
 }
 
+
 class Monoid {
 	constructor() {
 		this.relations = [];
