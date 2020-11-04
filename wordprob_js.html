@@ -16,6 +16,7 @@
 	<input type="button" onclick="btn_change_monoidname()" value="名前変更">
 	<input type="button" onclick="btn_new_monoid()" value="新規">
 	<input type="button" onclick="btn_remove_monoid()" value="削除">
+	<input type="button" onclick="btn_remove_all_monoid()" value="全削除">
 	
 	<hr>
 
@@ -37,7 +38,6 @@
 	let page_save = construct_save_page();
 
 	Tab.onclick(tab_working_area, page_relation);
-
 
 	function set_text(elem, txt) {
 		elem.appendChild(document.createTextNode(txt));
@@ -86,6 +86,7 @@
 		set_text(cntarea, " = ");
 		set_textbox(cntarea, "relation_right", "");
 		set_button(cntarea, "追加", "btn_add_relation()");
+		set_button(cntarea, "生成元の位数", "btn_add_exp_relation()");
 		set_br(cntarea);
 
 		set_button(cntarea, "整列", "btn_sort()");
@@ -94,6 +95,7 @@
 		set_button(cntarea, "消去", "btn_erase()");
 		set_button(cntarea, "合流的か？", "btn_confluence()");
 		set_button(cntarea, "派生Monoid生成", "btn_gen_submon()");
+		set_button(cntarea, "全組合せで生成", "btn_gen_submon_all()");
 
 		set_div(cntarea, "relation_view");
 		return Tab.newpage(tab_working_area, "関係式一覧", cntarea.innerHTML, page_update);
@@ -125,11 +127,11 @@
 		set_br(cntarea);
 		set_text(cntarea, "※値が大きい(特に無制限だ)と処理が永遠に終わらないかもしれません！");
 		set_br(cntarea);
-		set_text(cntarea, "※値に関わらず永遠に終わらない例もあります");
+		set_text(cntarea, "※そもそも合流的な有限関係式系が存在しない、永遠に計算不能な例が実在します。");
 		set_br(cntarea);
-		set_text(cntarea, "※逆に値が小さいと合流的にならないかもしれません！");
+		set_text(cntarea, "※無制限でない場合は結果が未だ合流的でない可能性が残っています。合流的か？ボタンで検証できるよ！");
 		set_br(cntarea);
-		set_text(cntarea, "※でもmonoidとして不変なことはいつも保証されるよ！(ﾟ∀ﾟ∩");
+		set_text(cntarea, "※制限によって強制中断されても、結果はmonoidとしては変わっていないので安心してね！(ﾟ∀ﾟ∩");
 
 		return Tab.newpage(tab_working_area, "設定", cntarea.innerHTML, show_cur_limit);
 	}
@@ -340,6 +342,68 @@
 		}
 	}
 
+	function btn_gen_submon_all() {
+		let list_monoid = document.getElementById("list_monoid");
+		let name_cand = monnamelist[list_monoid.selectedIndex] + "_sub";
+		let selectedrellist = [], fixedrellist = [];
+		let selectedidlist = [];
+		let myrels = document.rel_checkboxes.rels;
+
+		
+		
+		if(myrels) {
+			let counter = 0;
+			if(myrels.length > 1) {
+				for(const box of myrels) {
+					let reltoadd = mon.relations[counter];
+					if(box.checked) {
+						selectedidlist.push(counter + 1);
+						selectedrellist.push(reltoadd);
+					}
+					else {
+						fixedrellist.push(reltoadd);
+					}
+					counter++;
+				}
+			}
+			else return; // trivial and no use
+
+			if(!selectedrellist.length) {
+				alert("関係式を選択してね！");
+				return;
+			}
+			if(selectedrellist.length >= 13) {
+				alert("パターン大杉！！(ﾟAﾟ;)");
+				return; // absurd!!!
+			}
+
+			if(!confirm("選んだ関係式全ての組合せを生成します。よろしいですか？(ﾟAﾟ;)")) return;
+
+			if(selectedrellist.length >= 7 && (!confirm("Seriously?(ﾟAﾟ;;)") || !confirm("何百個も生成されるけど、ほんとにいいの!?(ﾟAﾟ;;;)"))) {
+				return;
+			}
+
+			for(let i = 0; i < (1 << selectedrellist.length) - 1; i++) {
+				let sublist = fixedrellist.slice();
+				let submonname = name_cand;
+				console.log(i);
+				for(let j = 0; j < selectedrellist.length; j++) {
+					if(i & (1<<j)) {
+						submonname += selectedidlist[j];
+						sublist.push(selectedrellist[j]);
+					}
+				}
+				let new_submon = new Monoid;
+				for(const rel of sublist) {
+					new_submon.relations.push(new Relation(rel.first, rel.second));
+				}
+				monnamelist.push(submonname);
+				monlist.push(new_submon);
+			}
+			page_update();
+		}
+	}
+
 	function sanitize(text) {
 		if(text) return text.replace(/[\x00-\x20<=>"'&\x7f-\x9f]/g, "");
 		else return "";
@@ -423,6 +487,37 @@
 		if(new_resol_limit >= 0 && new_overl_limit >= 0) {
 			resol_max = new_resol_limit;
 			max_overlap = new_overl_limit;
+		}
+	}
+
+	function btn_add_exp_relation() {
+		let generators = sanitize(window.prompt("位数を指定する生成元(一括で複数指定可能)", ""));
+		if(generators) {
+			// eliminate duplicates
+			let gen_split = generators.split("");
+			generators = gen_split.filter((x, i, self) => self.indexOf(x) === i);
+
+			let order = parseInt(sanitize(window.prompt(generators.join() + "の位数(1～1000)", "2")));
+			if(order >= 1 && order <= 1000) {
+				for(const elem of generators) {
+					mon.add_relation(elem.repeat(order), "");
+				}
+				page_update();
+			}
+		}
+	}
+
+	function btn_remove_all_monoid() {
+		if(confirm("Monoidを*全て*削除し初期化します。よろしいですか(´・ω・`)？")) {
+			if(confirm("ほんとにいいですか(´；ω；`)")) {
+				monnamelist.splice(0);
+				monlist.splice(0);
+
+				monlist.push(new Monoid);
+				monnamelist.push("monoid0");
+				mon = monlist[0];
+				page_update();
+			}
 		}
 	}
 
