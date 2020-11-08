@@ -27,6 +27,7 @@ class Monoid {
 		this.relations = [];
 		this.relstack = [];
 		this.resolve_count = 0;
+		this.name = "";
 	}
   
   reduce_word(w) {
@@ -37,7 +38,13 @@ class Monoid {
 				function(rel) {
 					let relator_found = false;
           if(rel.first.length) { // being .first empty means that it is not active
-            result = result.replace(rel.first, function() {relator_found = true; return rel.second;});
+//            result = result.replace(rel.first, function() {relator_found = true; return rel.second;});
+
+let ind = result.indexOf(rel.first);
+if(ind >= 0) {
+	relator_found = true;
+	result = result.substr(0, ind) + rel.second + result.substr(ind + rel.first.length);
+}
           }
           
 					return relator_found;
@@ -138,6 +145,7 @@ class Monoid {
       });
     }
 
+	// return "" if confluent, otherwise return word where the confluence fails
   confluence() {
     for(const rela of this.relations) {
       let strP = rela.first;
@@ -164,14 +172,14 @@ class Monoid {
             
             // test confluence of QE = PE = AUE = AR = AS or Q = P = AUD = ARD = ASD
             if(this.reduce_word(strA + strS + strD) !== this.reduce_word(strQ + strE)) {
-              return false;
+              return strA + strS + strD + "=" + strA + strR + strD + strE + "=" + strQ + strE;
             }
           }
         }
       }
     }
     
-    return true;
+    return ""; // *confluent*!
   }
 
   add_relation(left, right)

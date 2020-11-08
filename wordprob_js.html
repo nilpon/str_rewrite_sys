@@ -23,13 +23,16 @@
 	<div id="working_area"></div>
 
 	<script language="javascript" type="text/javascript">
-	let monlist = [], monnamelist = [];
+	let monlist = [];
 	monlist.push(new Monoid);
-	monnamelist.push("monoid0");
 	let mon = monlist[0];
+	mon.name = "monoid0";
 	let resol_max = 10000;
 	let max_overlap = 50;
 
+	// array of [word, replace_begin, left, right, monoid_name]
+	let calc_history = [];
+	let use_right2left = false;
 
 	let tab_working_area = Tab.new("working_area");
 	let page_relation = construct_relation_page();
@@ -41,6 +44,13 @@
 
 	function set_text(elem, txt) {
 		elem.appendChild(document.createTextNode(txt));
+	}
+
+	function set_span_text(elem, txt, classname) {
+		let span = document.createElement("span");
+		if(classname) span.setAttribute("class", classname);
+		span.innerText = txt;
+		return elem.appendChild(span);
 	}
 
 	function set_textbox(elem, id, value, onfocus = null, readonly = false) {
@@ -56,7 +66,7 @@
 			txtbox.readOnly = true;
 		}
 
-		elem.appendChild(txtbox);
+		return elem.appendChild(txtbox);
 	}
 
 	function set_button(elem, txt, onclick) {
@@ -65,17 +75,31 @@
 		btn.setAttribute("value", txt);
 		btn.setAttribute("onclick", onclick);
 
-		elem.appendChild(btn);
+		return elem.appendChild(btn);
 	}
 
-	function set_div(elem, id) {
+	function set_div(elem, id, classname) {
 		let div = document.createElement("div");
-		div.setAttribute("id", id);
-		elem.appendChild(div);
+		if(id) div.setAttribute("id", id);
+		if(classname) div.setAttribute("class", classname);
+		return elem.appendChild(div);
 	}
 
 	function set_br(elem) {
 		elem.appendChild(document.createElement("br"));
+	}
+
+	function set_hr(elem) {
+		elem.appendChild(document.createElement("hr"));
+	}
+
+	function set_checkbox(elem, id, onclick) {
+		let btn = document.createElement("input");
+		btn.setAttribute("type", "checkbox");
+		if(id) btn.setAttribute("id", id);
+		if(onclick) btn.setAttribute("onclick", onclick);
+
+		elem.appendChild(btn);
 	}
 
 	function construct_relation_page() {
@@ -139,7 +163,17 @@
 	function construct_calc_page() {
 		let cntarea = document.createElement("div");
 
-		return Tab.newpage(tab_working_area, "計算", cntarea.innerHTML);
+		set_textbox(cntarea, "word_txt", "");
+		set_button(cntarea, "入力", "btn_calc_begin()");
+		set_button(cntarea, "元に戻す", "btn_rollback()");
+		set_button(cntarea, "履歴をクリア", "btn_hist_clear()");
+		set_checkbox(cntarea, "is_right2left", "draw_manip_candicates()");
+		set_text(cntarea, "逆変形");
+		
+		set_div(cntarea, "history_area", "history_area");
+		set_div(cntarea, "manip_area");
+
+		return Tab.newpage(tab_working_area, "計算", cntarea.innerHTML, on_move_to_calc_page);
 	}
 
 	function btn_add_relation() {
@@ -198,7 +232,7 @@
 		for(let i = 0; i < monlist.length; i++) {
 			let option = document.createElement("option");
 			option.setAttribute("value", i);
-			option.innerHTML = monnamelist[i];
+			option.innerHTML = monlist[i].name;
 			list_monoid.appendChild(option);
 		}
 
@@ -212,7 +246,9 @@
 	}
 
 	function btn_KB() {
+		console.time("Knuth-Bendix");
 		mon.Knuth_Bendix(resol_max, max_overlap);
+		console.timeEnd("Knuth-Bendix");
 		page_update();
 	}
 
@@ -253,9 +289,11 @@
 	}
 
 	function btn_confluence() {
+console.time("confluence");
 		is_confl = mon.confluence();
-		if(is_confl) alert("合流的ですO(^o^)O");
-		else alert("合流的じゃない;O(>o<)O;");
+console.timeEnd("confluence");
+		if(!is_confl) alert("合流的ですO(^o^)O");
+		else alert("合流的じゃない;O(>o<)O;\nfailed at: " + is_confl);
 	}
 
 	function set_mon() {
@@ -270,9 +308,9 @@
 	function btn_change_monoidname() {
 		let listbox = document.getElementById("list_monoid");
 		
-		let newname = sanitize(window.prompt(monnamelist[listbox.selectedIndex] + "の新しい名前", monnamelist[listbox.selectedIndex]));
+		let newname = sanitize(window.prompt(monlist[listbox.selectedIndex].name + "の新しい名前", monlist[listbox.selectedIndex].name));
 		if(newname) {
-			monnamelist[listbox.selectedIndex] = newname;
+			monlist[listbox.selectedIndex].name = newname;
 			page_update();
 		}
 	}
@@ -289,8 +327,9 @@
 
 		let newname = sanitize(window.prompt("新しいMonoidの名前", name_cand));
 		if(newname) {
-			monnamelist.push(newname);
-			monlist.push(new Monoid);
+			let newmon = new Monoid;
+			newmon.name = newname;
+			monlist.push(newmon);
 			page_update();
 			monoid_list_select(monlist.length - 1);
 		}
@@ -306,8 +345,7 @@
 			return;
 		}
 
-		if(confirm("本当に" + monnamelist[listbox.selectedIndex] + "を削除しますか(´・ω・`)？")) {
-			monnamelist.splice(listbox.selectedIndex, 1);
+		if(confirm("本当に" + monlist[listbox.selectedIndex].name + "を削除しますか(´・ω・`)？")) {
 			monlist.splice(listbox.selectedIndex, 1);
 			page_update();
 		}
@@ -315,7 +353,7 @@
 
 	function btn_gen_submon() {
 		let list_monoid = document.getElementById("list_monoid");
-		let name_cand = monnamelist[list_monoid.selectedIndex] + "_sub";
+		let name_cand = monlist[list_monoid.selectedIndex].name + "_sub";
 		let newrellist = [];
 		let myrels = document.rel_checkboxes.rels;
 		
@@ -344,7 +382,7 @@
 
 	function btn_gen_submon_all() {
 		let list_monoid = document.getElementById("list_monoid");
-		let name_cand = monnamelist[list_monoid.selectedIndex] + "_sub";
+		let name_cand = monlist[list_monoid.selectedIndex].name + "_sub";
 		let selectedrellist = [], fixedrellist = [];
 		let selectedidlist = [];
 		let myrels = document.rel_checkboxes.rels;
@@ -397,7 +435,7 @@
 				for(const rel of sublist) {
 					new_submon.relations.push(new Relation(rel.first, rel.second));
 				}
-				monnamelist.push(submonname);
+				new_submon.name = submonname;
 				monlist.push(new_submon);
 			}
 			page_update();
@@ -413,7 +451,7 @@
 	function btn_export() {
 		monlist_data = "";
 		for(let i = 0; i < monlist.length; i++) {
-			monlist_data += monnamelist[i] + "<";
+			monlist_data += monlist[i].name + "<";
 			for(const rel of monlist[i].relations) {
 				monlist_data += rel.first + "=" + rel.second + "&";
 			}
@@ -431,7 +469,6 @@
 		if(importraw) {
 			let import_monlist = importraw.split(">");
 			let new_monlist = [];
-			let new_monnamelist = [];
 			for(const montxt of import_monlist) {
 				if(!montxt) continue;
 				let import_name_and_relation = montxt.split("<");
@@ -445,9 +482,9 @@
 					alert("データが破損しています！");
 					return;
 				}
-				new_monnamelist.push(myname);
 
 				let mymon = new Monoid;
+				mymon.name = myname;
 				let import_relations = import_name_and_relation[1].split("&");
 				for(const reltxt of import_relations) {
 					if(!reltxt) continue;
@@ -466,7 +503,6 @@
 
 			if(new_monlist.length) {
 				monlist = new_monlist;
-				monnamelist = new_monnamelist;
 				monoid_list_select(0);
 
 				alert("インポートしました！");
@@ -510,16 +546,243 @@
 	function btn_remove_all_monoid() {
 		if(confirm("Monoidを*全て*削除し初期化します。よろしいですか(´・ω・`)？")) {
 			if(confirm("ほんとにいいですか(´；ω；`)")) {
-				monnamelist.splice(0);
 				monlist.splice(0);
 
 				monlist.push(new Monoid);
-				monnamelist.push("monoid0");
 				mon = monlist[0];
+				mon.name = "monoid0";
+				
 				page_update();
 			}
 		}
 	}
+
+	function view_calc() {
+		draw_history();
+		draw_manip_candicates();
+	}
+
+	function btn_calc_begin() {
+		let txtbox = document.getElementById("word_txt");
+		
+		if(!txtbox) return;
+
+		calc_history.push([sanitize(txtbox.value), -1, "", "", mon.name]);
+		view_calc();
+	}
+
+	function manip_candicates(cur_word) {
+		let manips = [];
+		let chkbox = document.getElementById("is_right2left");
+
+		if(!chkbox) return;
+		use_right2left = chkbox.checked;
+
+		for(const rel of mon.relations) {
+			let i = -1;
+			while((i = cur_word.indexOf(rel.first, i + 1)) != -1) {
+				manips.push([i, rel.first, rel.second]);
+				if(i >= cur_word.length - 1) break;
+			}
+			if(use_right2left) {
+				if(!rel.second.length) {// insertion
+					manips.push([-1, rel.second, rel.first]);
+				}
+				else {
+					let i = -1;
+					while((i = cur_word.indexOf(rel.second, i + 1)) != -1) {
+						manips.push([i, rel.second, rel.first]);
+						if(i >= cur_word.length - 1) break;
+					}
+				}
+			}
+		}
+		
+		return manips;
+	}
+
+	function draw_manip_candicates() {
+		let manip_area = document.getElementById("manip_area");
+		if(!manip_area) return;
+		manip_area.innerHTML = "";
+		if(!calc_history.length) return;
+
+		cur_word = calc_history.slice(-1)[0][0];
+		
+		manips = manip_candicates(cur_word);
+		if(!manips) return;
+
+		let line_count = 0;
+		for(const manip of manips) {
+			let manip_line = set_div(manip_area, "manip_btn" + line_count);
+
+			if(manip[0] < 0) { // insertion
+				set_button(manip_line, "挿入", "draw_insert_manip(\"manip_btn" + line_count + "\")");
+				set_text(manip_line, manip[2]);
+				set_div(manip_line).style.marginLeft = "1em"; // insert command area
+			}
+			else {
+				set_button(manip_line, "適用", "btn_apply_manip(" + manip[0] + "," + manip[1].length + ",\"" + manip[2] + "\")");
+				set_text(manip_line, cur_word.substr(0, manip[0]));
+				set_span_text(manip_line, manip[1], "relator");
+				set_text(manip_line, cur_word.substr(manip[0] + manip[1].length));
+				set_text(manip_line, " = ");
+				set_text(manip_line, cur_word.substr(0, manip[0]));
+				if(manip[2].length) { // no need to show empty word
+					set_span_text(manip_line, manip[2], "relator");
+				}
+				else { // but in case cur_word == manip[1] and vanish
+					if(cur_word === manip[1]) set_text(manip_line, "ε");
+				}
+				set_text(manip_line, cur_word.substr(manip[0] + manip[1].length));
+			}
+			line_count++;
+		}
+	}
+
+	function draw_insert_manip(id) {
+		let mymanip = document.getElementById(id);
+		if(!mymanip) return;
+
+		cur_word = calc_history.slice(-1)[0][0];
+		
+		if(mymanip.firstChild.value == "挿入") {
+			mymanip.firstChild.value = "閉じる";
+			let manip_line = mymanip.lastChild;
+			let word_to_insert = mymanip.childNodes[1].data;
+			
+			for(let i = 0; i <= cur_word.length; i++) {
+				set_button(manip_line, "適用", "btn_apply_manip(" + i + "," + 0 + ",\"" + word_to_insert + "\")");
+				set_text(manip_line, cur_word.substr(0, i));
+				set_span_text(manip_line, "^", "relator");
+				set_text(manip_line, cur_word.substr(i));
+				set_text(manip_line, " = ");
+				set_text(manip_line, cur_word.substr(0, i));
+				set_span_text(manip_line, word_to_insert, "relator");
+				set_text(manip_line, cur_word.substr(i));
+				set_br(manip_line);
+			}
+		}
+		else {
+			mymanip.firstChild.value = "挿入";
+			mymanip.lastChild.innerHTML = "";
+		}
+	}
+
+	function btn_apply_manip(offset, leftlen, right) {
+		let i = parseInt(offset);
+		let len = parseInt(leftlen);
+		let lasthist = calc_history.pop();
+		if(!lasthist) return;
+
+		let cur_word = lasthist[0];
+		lasthist[1] = i;
+		lasthist[2] = cur_word.substr(i, len);
+		lasthist[3] = right;
+		lasthist[4] = mon.name;
+		calc_history.push(lasthist);
+
+		let new_word = cur_word.substr(0, i) + right + cur_word.substr(i + len);
+		calc_history.push([new_word, -1, "", "", mon.name]);
+		view_calc();
+	}
+
+	function scroll_to_recent_history() {
+		let history_area = document.getElementById("history_area");
+		if(!history_area) return;
+
+		history_area.scrollTop = history_area.scrollHeight;
+	}
+
+
+	function draw_history() {
+		let history_area = document.getElementById("history_area");
+		if(!history_area) return;
+		history_area.innerHTML = "";
+
+		let is_first = true;
+		for(const hist of calc_history) {
+			let cur_line = set_span_text(history_area, "");
+			if(!is_first) {
+				set_text(cur_line, " = ");
+			}
+			else is_first = false;
+
+			if(hist[1] >= 0) {
+				set_text(cur_line, hist[0].substr(0, hist[1]));
+				if(!hist[2].length) { // replacing empty word
+					set_span_text(cur_line, "^", "relator");
+				}
+				else {
+					set_span_text(cur_line, hist[2], "relator");
+				}
+				set_text(cur_line, hist[0].substr(hist[1] + hist[2].length));
+
+				let left = hist[2];
+				if(!left.length) left = "ε";
+				let right = hist[3];
+				if(!right.length) right = "ε";
+				set_span_text(history_area, " :" + left + " = " + right + " @" + hist[4]).style.marginLeft = "" + (220 - cur_line.getBoundingClientRect().width % 200) + "px";
+				set_br(history_area);
+			}
+			else {
+				let cur_word = hist[0];
+				if(!cur_word) cur_word = "ε";
+				set_text(cur_line, cur_word);
+				set_hr(history_area);
+				is_first = true;
+			}
+		}
+		scroll_to_recent_history();
+	}
+
+	function on_move_to_calc_page() {
+		let txtbox = document.getElementById("word_txt");
+		if(!txtbox) return;
+
+		if(calc_history.length) {
+			// set current word to input textbox
+			txtbox.value = calc_history[calc_history.length - 1][0];
+		}
+
+		let chkbox = document.getElementById("is_right2left");
+		if(!chkbox) return;
+		chkbox.checked = use_right2left;
+
+		scroll_to_recent_history();
+		draw_manip_candicates(); // monoid may be changed!
+	}
+
+	function btn_rollback() {
+		calc_history.pop();
+		if(calc_history.length) {
+			// erase last manipulation info in order not to display it
+			calc_history[calc_history.length - 1][1] = -1;
+		}
+		view_calc();
+	}
+
+	function btn_hist_clear() {
+		calc_history = [];
+		view_calc();
+	}
+
+/*
+	function btn_auto_reduce() {
+		let w = sanitize(current_word);
+
+		while(
+			mon.relations.some(
+				function(rel) {
+					let relator_found = false;
+          w = w.replace(rel.first, function() {relator_found = true; return rel.second;});
+          
+					return relator_found;
+				}
+			)
+		);
+	}
+*/
 
   </script>
 	</body>

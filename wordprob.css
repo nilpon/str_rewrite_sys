@@ -23,3 +23,14 @@
 	white-space:nowrap;
 	overflow-x:scroll;
 }
+
+.history_area{
+	border:1px solid #888;
+	height: 20em;
+	white-space:nowrap;
+	overflow:scroll;
+}
+
+.relator{
+	color:#0cc;
+}
