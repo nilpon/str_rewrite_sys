@@ -141,7 +141,7 @@
 
 		set_text(cntarea, "Knuth-Bendix procedure の計算量制御");
 		set_br(cntarea);
-		set_text(cntarea, "overlap解消処理の最大実行回数(0は無制限):");
+		set_text(cntarea, "簡約処理の最大実行回数(0は無制限):");
 		set_textbox(cntarea, "resol_limit_txt", "" + resol_max);
 		set_br(cntarea);
 		set_text(cntarea, "長いoverlapは無視する(0は無制限):");
@@ -152,11 +152,15 @@
 		set_br(cntarea);
 		set_text(cntarea, "※値が大きい(特に無制限だ)と処理が永遠に終わらないかもしれません！");
 		set_br(cntarea);
+		set_text(cntarea, "※「処理の最大実行回数」のほうがより確実に処理時間を制御できます。");
+		set_br(cntarea);
+		set_text(cntarea, "※許容するoverlapの長さを増やすと、処理時間が急速に増大する場合があるので、本当に必要になるまでは増やさないほうがよいでしょう。");
+		set_br(cntarea);
 		set_text(cntarea, "※そもそも合流的な有限関係式系が存在しない、永遠に計算不能な例が実在します。");
 		set_br(cntarea);
-		set_text(cntarea, "※無制限でない場合は結果が未だ合流的でない可能性が残っています。合流的か？ボタンで検証できるよ！");
+		set_text(cntarea, "※無制限でない場合は結果が未だ合流的でない可能性が残ります。合流的か？ボタンで検証できるよ！(ﾟ∀ﾟ∩");
 		set_br(cntarea);
-		set_text(cntarea, "※制限によって強制中断されても、結果はmonoidとしては変わっていないので安心してね！(ﾟ∀ﾟ∩");
+		set_text(cntarea, "※なお制限によって処理が途中で終了しても、出力結果はmonoidとしては同型です。");
 
 		return Tab.newpage(tab_working_area, "設定", cntarea.innerHTML, show_cur_limit);
 	}
@@ -532,6 +536,7 @@ console.timeEnd("confluence");
 		if(new_resol_limit >= 0 && new_overl_limit >= 0) {
 			resol_max = new_resol_limit;
 			max_overlap = new_overl_limit;
+			alert("設定しました！");
 		}
 	}
 

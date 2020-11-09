@@ -43,22 +43,20 @@ class Monoid {
 		// rule identifier function
 		// index2relator[state_id] = relator if terminal state, otherwise 0
 		this.index2relator = [];
+		this.index2length = [];
 	}
 
 	_check_update() {
 		if(this.relator_changed) {
 			this.is_reduced = this.is_irreducible_system();
-			if(this.is_reduced) {
-				this.generate_index_table();
-			}
+			this.generate_index_table();
 			this.relator_changed = false;
 		}
 	}
 
 	reduce_word(w) {
 		this._check_update();
-		if(this.is_reduced) return this.reduce_word_using_index(w);
-		else return this.reduce_word_from_left(w);
+		return this.reduce_word_using_index(w);
 	}
   
   reduce_word_from_left(w) {
@@ -69,13 +67,11 @@ class Monoid {
 				function(rel) {
 					let relator_found = false;
           if(rel.first.length) { // being .first empty means that it is not active
-//            result = result.replace(rel.first, function() {relator_found = true; return rel.second;});
-
-let ind = result.indexOf(rel.first);
-if(ind >= 0) {
-	relator_found = true;
-	result = result.substr(0, ind) + rel.second + result.substr(ind + rel.first.length);
-}
+						let ind = result.indexOf(rel.first);
+						if(ind >= 0) {
+							relator_found = true;
+							result = result.substr(0, ind) + rel.second + result.substr(ind + rel.first.length);
+						}
           }
           
 					return relator_found;
@@ -88,7 +84,7 @@ if(ind >= 0) {
 
 	reduce_word_using_index(w) {
 		// in case no relation
-		if(!this.index_table.length) return w;
+		if(!this.gen_list.length) return w;
 
 		let result = w;
 		let path = [0];
@@ -209,7 +205,7 @@ if(ind >= 0) {
 	}
 
 	// return "" if confluent, otherwise return word where the confluence fails
-  confluence() {
+  confluence_naive() {
     for(const rela of this.relations) {
       let strP = rela.first;
       for(const relb of this.relations) {
@@ -244,6 +240,63 @@ if(ind >= 0) {
     
     return ""; // *confluent*!
   }
+
+	confluence(){
+		this._check_update();
+		if(this.is_reduced) return this.confluence_using_index();
+		else return this.confluence_naive();
+	}
+
+	// optimized version but this is valid only when relations are reduced
+	confluence_using_index() {
+		for(const rel of this.relations) {
+			let u = rel.first;
+			// u := cs (c is generator)
+			// let first state s
+			let first_state = 0;
+			for(let i = 1; i < u.length; i++) {
+				first_state = this.index_table[first_state][this.gen2id[u[i]]];
+			}
+
+			let path = [first_state];
+			let v = [0]; // word to append to u
+			do {
+				let gen_append = v[v.length - 1];
+				let last_state = path[path.length - 1];
+				let next_state = this.index_table[last_state][gen_append];
+				let prefix_length = this.index2length[next_state];
+				let second_relator = this.index2relator[next_state];
+
+				if(prefix_length > v.length) {
+					if(second_relator) { // overlap found!
+						let overlap_len = prefix_length - v.length;
+						let overlap_left = rel.second + second_relator.first.substr(overlap_len);
+						let overlap_right = rel.first.substr(0, rel.first.length - overlap_len) + second_relator.second;
+						if(this.reduce_word(overlap_left) !== this.reduce_word(overlap_right)) {
+							let overlap = rel.first + second_relator.first.substr(overlap_len);
+							return overlap_left + " = " + overlap + " = " + overlap_right;
+						}
+						v[v.length - 1]++;
+					}
+					else {
+						path.push(next_state);
+						v.push(0);
+					}
+				}
+				else { // no proper overlap will be found in this way
+					v[v.length - 1]++;
+				}
+
+				while(v[v.length - 1] >= this.gen_list.length) {
+					v.pop();
+					path.pop();
+					v[v.length - 1]++;
+				}
+			} while(v.length);
+		}
+
+		return ""; // *confluent*
+	}
 
   add_relation(left, right)
     {
@@ -371,11 +424,13 @@ if(ind >= 0) {
 
 		this.index_table = new Array(index_map.size);
 		this.index2relator = new Array(index_map.size);
+		this.index2length = new Array(index_map.size);
 		for(let entry of index_map) {
 			let prefix = entry[0];
 			let data = entry[1];
 			let entry_id = data[this.gen_list.length + 1];
 			this.index2relator[entry_id] = data[this.gen_list.length];
+			this.index2length[entry_id] = prefix.length;
 			let destination_list = new Array(this.gen_list.length);
 			for(let i = 0; i < this.gen_list.length; i++) {
 				destination_list[i] = index_map.get(data[i])[this.gen_list.length + 1];
