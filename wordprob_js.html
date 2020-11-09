@@ -114,6 +114,7 @@
 		set_br(cntarea);
 
 		set_button(cntarea, "整列", "btn_sort()");
+		set_button(cntarea, "簡約", "btn_reduce_relations()");
 		set_button(cntarea, "Knuth-Bendix", "btn_KB()");
 		set_button(cntarea, "全選択", "btn_selall()");
 		set_button(cntarea, "消去", "btn_erase()");
@@ -252,6 +253,15 @@
 		page_update();
 	}
 
+	function btn_reduce_relations() {
+		mon.reduce_relations();
+		// remove inactive relations
+    mon.relations = mon.relations.filter( function (rel) {
+      return rel.first;
+    });
+		page_update();
+	}
+
 	function btn_selall() {
 		let myrels = document.rel_checkboxes.rels;
 		
@@ -272,18 +282,17 @@
 		let counter = 0;
 		
 		if(myrels) {
+			let index_list = [];
 			if(myrels.length > 1) {
 				for(const box of myrels) {
-					if(box.checked) mon.relations[counter].first = "";
+					if(box.checked) index_list.push(counter);
 					counter++;
 				}
 			}
 			else {
-				if(myrels.checked) mon.relations[0].first = "";
+				if(myrels.checked) index_list.push(0);
 			}
-			mon.relations = mon.relations.filter( function (rel) {
-  	    return rel.first;
-    	});
+			mon.remove_relations(index_list);
 			page_update();
 		}
 	}

@@ -28,9 +28,40 @@ class Monoid {
 		this.relstack = [];
 		this.resolve_count = 0;
 		this.name = "";
+
+		// to determine whether index_table shoult be reconstructed
+		this.relator_changed = true;
+		this.is_reduced = false;
+
+		this.gen2id = {}; // generator list (in leftside)
+		this.gen_list = [];
+
+		// index automata
+		// index_table[state_id][generator_id] = next_state_id
+		this.index_table = [];
+
+		// rule identifier function
+		// index2relator[state_id] = relator if terminal state, otherwise 0
+		this.index2relator = [];
+	}
+
+	_check_update() {
+		if(this.relator_changed) {
+			this.is_reduced = this.is_irreducible_system();
+			if(this.is_reduced) {
+				this.generate_index_table();
+			}
+			this.relator_changed = false;
+		}
+	}
+
+	reduce_word(w) {
+		this._check_update();
+		if(this.is_reduced) return this.reduce_word_using_index(w);
+		else return this.reduce_word_from_left(w);
 	}
   
-  reduce_word(w) {
+  reduce_word_from_left(w) {
     let result = w;
 
 		while(
@@ -54,14 +85,40 @@ if(ind >= 0) {
 
     return result;
   }
+
+	reduce_word_using_index(w) {
+		// in case no relation
+		if(!this.index_table.length) return w;
+
+		let result = w;
+		let path = [0];
+		let pos = 0;
+
+		while(pos < result.length){
+			let charid = this.gen2id[result[pos]];
+			let state = path[path.length - 1];
+			if(charid >= 0) state = this.index_table[state][charid];
+			else state = 0; // unknown generator
+			path.push(state);
+			pos++;
+			let relator = this.index2relator[state];
+			if(relator) { // found leftside!
+				result = result.substr(0, pos - relator.first.length) + relator.second + result.substr(pos);
+				path.splice(-relator.first.length);
+				pos -= relator.first.length;
+			}
+		}
+
+		return result;
+	}
   
   resolve_relstack() {
     while(this.relstack.length) {
       let rel = this.relstack.pop();
 			let new_relator;
     
-      rel.first = this.reduce_word(rel.first);
-      rel.second = this.reduce_word(rel.second);
+      rel.first = this.reduce_word_from_left(rel.first);
+      rel.second = this.reduce_word_from_left(rel.second);
       if(rel.first !== rel.second) {
         if(shortlex_order(rel.first, rel.second)) {
           new_relator = rel.second;
@@ -82,7 +139,7 @@ if(ind >= 0) {
               myrel[i].first = ""; // erase
             }
             else if(myrel[i].second.indexOf(new_relator) >= 0) {
-              myrel[i].second = this.reduce_word(myrel[i].second);
+              myrel[i].second = this.reduce_word_from_left(myrel[i].second);
             }
           }
         }
@@ -106,13 +163,9 @@ if(ind >= 0) {
   
   Knuth_Bendix(maxresolution = 10000, overlap_limit = 0)
     {
-      this.relstack = this.relations.slice();
-      this.relstack.reverse(); // so that popping order coincide with relation's order
-      this.relations.splice(0); // clear all
+      this.reduce_relations();
 
 			this.resolve_count = 0;
-      
-      this.resolve_relstack();
 
       let i = 0;
       while(i < this.relations.length) {
@@ -144,6 +197,16 @@ if(ind >= 0) {
         return rel.first;
       });
     }
+
+	// resolve duplicated relations
+	reduce_relations() {
+		this.relstack = this.relations.slice();
+    this.relstack.reverse(); // so that popping order coincide with relation's order
+    this.relations.splice(0); // clear all
+		this.resolve_relstack();
+
+		this.relator_changed = true;
+	}
 
 	// return "" if confluent, otherwise return word where the confluence fails
   confluence() {
@@ -195,6 +258,7 @@ if(ind >= 0) {
 
         if(!this.relations.some(r => r.first === rel.first && r.second === rel.second)) {
           this.relations.push(rel);
+					this.relator_changed = true;
         }
       }
     }
@@ -219,42 +283,105 @@ if(ind >= 0) {
       });
     }
   }
-/*
-  bool set_coxeter(const std::size_t rank, const std::vector<std::size_t> &degrees)
-    {
-      const std::string dic = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-      
-      if(rank > dic.size() - 1) return false;
-      if(degrees.size() < rank * (rank - 1) / 2) return false;
-      
-      relations.clear();
-      
-      for(std::size_t i = 1; i <= rank; i++) {
-        relations.push_back(std::make_pair(std::string({dic[i], dic[i]}), ""));
-      }
-      
-      for(std::size_t i = 1; i < rank; i++) {
-        for(std::size_t j = i + 1; j <= rank; j++) {
-          std::size_t m = degrees[(i - 1) * (2 * rank - i) / 2 + j - i - 1];
-          if(m > 1) {
-            std::string leftstr, rightstr;
-            for(std::size_t k = 1; k <= m; k++) {
-              if(k % 2 == 1) {
-                leftstr += dic[j];
-                rightstr += dic[i];
-              }
-              else {
-                leftstr += dic[i];
-                rightstr += dic[j];
-              }
-            }
-            relations.push_back(std::make_pair(leftstr, rightstr));
-          }
-        }
-      }
 
-      return true;
-    }
-*/
+	// for every relator l = r, l is irreducible w.r.t. other relators
+	is_irreducible_system () {
+		for(let i = 0; i < this.relations.length; i++) {
+			for(let j = 0; j < this.relations.length; j++) {
+				if(i != j) {
+					if(this.relations[j].first.indexOf(this.relations[i].first) >= 0) return false;
+				}
+			}
+		}
+		return true;
+	}
+
+	remove_relations(index_list) {
+		for(const i of index_list) {
+			this.relations[i].first = "";
+		}
+		this.relations = this.relations.filter( function (rel) {
+  	  return rel.first;
+    });
+		this.relator_changed = true;
+	}
+
+	left_generator_list() {
+		this.gen2id = {};
+		this.gen_list = [];
+		
+		let myindex = 0;
+		for(const rel of this.relations) {
+			for(const c of rel.first.split("")) {
+				if(!(c in this.gen2id)) {
+					this.gen2id[c] = myindex;
+					this.gen_list.push(c);
+					myindex++;
+				}
+			}
+		}
+	}
+
+	_create_index_data(map, key, counter, rel) {
+		if(map.has(key)) return counter;
+		else {
+			let tmp = new Array(this.gen_list.length + 2);
+			tmp[this.gen_list.length] = rel;
+			tmp[this.gen_list.length + 1] = counter;
+			map.set(key, tmp);
+			return counter + 1;
+		}
+	}
+
+	generate_index_table() {
+		this.left_generator_list();
+
+		// first set all prefixes of leftside
+		let index_map = new Map;
+		let key_counter = 0;
+
+		key_counter = this._create_index_data(index_map, "", key_counter, 0);
+		for(const rel of this.relations) {
+			for(let i = 1; i < rel.first.length; i++) {
+				key_counter = this._create_index_data(index_map, rel.first.substr(0, i), key_counter, 0);
+			}
+			key_counter = this._create_index_data(index_map, rel.first, key_counter, rel);
+		}
+
+		for(let entry of index_map) {
+			let prefix = entry[0];
+			let data = entry[1];
+			if(data[this.gen_list.length]) { // prefix is leftside
+				for(let i = 0; i < this.gen_list.length; i++) {
+					data[i] = prefix;
+				}
+			}
+			else { // if P := prefix, find longest suffix of Px in all prefixes
+				for(let i = 0; i < this.gen_list.length; i++) {
+					let str = prefix + this.gen_list[i];
+					for(let j = 0; j <= str.length; j++) {
+						if(index_map.has(str.substr(j))) {
+							data[i] = str.substr(j);
+							break;
+						}
+					}
+				}
+			}
+		}
+
+		this.index_table = new Array(index_map.size);
+		this.index2relator = new Array(index_map.size);
+		for(let entry of index_map) {
+			let prefix = entry[0];
+			let data = entry[1];
+			let entry_id = data[this.gen_list.length + 1];
+			this.index2relator[entry_id] = data[this.gen_list.length];
+			let destination_list = new Array(this.gen_list.length);
+			for(let i = 0; i < this.gen_list.length; i++) {
+				destination_list[i] = index_map.get(data[i])[this.gen_list.length + 1];
+			}
+			this.index_table[entry_id] = destination_list;
+		}
+	}
 }
 
