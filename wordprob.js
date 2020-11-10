@@ -22,6 +22,7 @@ function shortlex_order(a, b)
   }
 }
 
+
 class Monoid {
 	constructor() {
 		this.relations = [];
@@ -56,7 +57,8 @@ class Monoid {
 
 	reduce_word(w) {
 		this._check_update();
-		return this.reduce_word_using_index(w);
+		if(this.is_reduced) return this.reduce_word_using_index(w);
+		else return this.reduce_word_from_left(w);
 	}
   
   reduce_word_from_left(w) {
@@ -228,7 +230,7 @@ class Monoid {
             let strU = strB.substr(0, k);
             let strQ = rela.second;
             let strS = relb.second;
-            
+						
             // test confluence of QE = PE = AUE = AR = AS or Q = P = AUD = ARD = ASD
             if(this.reduce_word(strA + strS + strD) !== this.reduce_word(strQ + strE)) {
               return strA + strS + strD + "=" + strA + strR + strD + strE + "=" + strQ + strE;
@@ -272,6 +274,7 @@ class Monoid {
 						let overlap_len = prefix_length - v.length;
 						let overlap_left = rel.second + second_relator.first.substr(overlap_len);
 						let overlap_right = rel.first.substr(0, rel.first.length - overlap_len) + second_relator.second;
+						
 						if(this.reduce_word(overlap_left) !== this.reduce_word(overlap_right)) {
 							let overlap = rel.first + second_relator.first.substr(overlap_len);
 							return overlap_left + " = " + overlap + " = " + overlap_right;
@@ -359,10 +362,7 @@ class Monoid {
 		this.relator_changed = true;
 	}
 
-	left_generator_list() {
-		this.gen2id = {};
-		this.gen_list = [];
-		
+	_left_generator_list() {
 		let myindex = 0;
 		for(const rel of this.relations) {
 			for(const c of rel.first.split("")) {
@@ -387,7 +387,16 @@ class Monoid {
 	}
 
 	generate_index_table() {
-		this.left_generator_list();
+		// wipe previous data
+		this.gen2id = {};
+		this.gen_list = [];
+		this.index_table = [];
+		this.index2relator = [];
+		this.index2length = [];
+
+		// this index works only for reduced rewriting system
+		if(!this.is_reduced) return;
+		this._left_generator_list();
 
 		// first set all prefixes of leftside
 		let index_map = new Map;
