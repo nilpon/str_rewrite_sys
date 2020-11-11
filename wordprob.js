@@ -12,6 +12,20 @@ class Relation {
 	}
 }
 
+// Relation with trace info
+class Relation_t {
+	constructor(x, y, hista, histd) {
+		this.first = x;
+		this.second = y;
+
+		// array of [index, relation_id]
+		// someword => x by hist_ascend
+		// someword => y by hist_descend
+		this.hist_ascend = hista;
+		this.hist_descend = histd;
+	}
+}
+
 function shortlex_order(a, b)
 {
   if(a.length == b.length) {
@@ -21,7 +35,6 @@ function shortlex_order(a, b)
     return a.length < b.length;
   }
 }
-
 
 class Monoid {
 	constructor() {
@@ -45,6 +58,11 @@ class Monoid {
 		// index2relator[state_id] = relator if terminal state, otherwise 0
 		this.index2relator = [];
 		this.index2length = [];
+
+		// for traceable KB
+		this.relation_database = [new Relation_t("", "", [], [])]; // first element is dummy 
+		this.relation_id_list = [];
+		this.relstack_t = [];
 	}
 
 	_check_update() {
@@ -446,6 +464,258 @@ class Monoid {
 			}
 			this.index_table[entry_id] = destination_list;
 		}
+	}
+
+
+	// traceable reduce_word
+	reduce_word_t(w) {
+    let result = w;
+		let history = [];
+
+		let relator_found = true;
+		while(relator_found) {
+			relator_found = false;
+			for(const rel_id of this.relation_id_list) {
+        if(rel_id) { // No. 0 means inactive
+					let rel = this.relation_database[rel_id];
+					let ind = result.indexOf(rel.first);
+					if(ind >= 0) {
+						relator_found = true;
+						result = result.substr(0, ind) + rel.second + result.substr(ind + rel.first.length);
+						history.push([ind, rel_id]);
+						break;
+					}
+        }
+			}
+		}
+
+    return [result, history];
+  }
+
+	resolve_relstack_t() {
+    while(this.relstack_t.length) {
+      let rel = this.relstack_t.pop();
+			
+      let left = this.reduce_word_t(rel.first);
+      let right = this.reduce_word_t(rel.second);
+
+      if(left[0] !== right[0]) { // new relation found!
+				let new_rel;
+        if(shortlex_order(left[0], right[0])) {
+          new_rel = new Relation_t(right[0], left[0], rel.hist_descend.concat(right[1]), rel.hist_ascend.concat(left[1]));
+        }
+        else {
+          new_rel = new Relation_t(left[0], right[0], rel.hist_ascend.concat(left[1]), rel.hist_descend.concat(right[1]));
+        }
+
+				let new_relator = new_rel.first;
+        this.relation_database.push(new_rel);
+				let new_rel_id = this.relation_database.length - 1;
+				this.relation_id_list.push(new_rel_id);
+
+        // update all relator *other* than the last 'rel' appended above
+        for(let i = 0; i < this.relation_id_list.length - 1; i++) {
+          if(this.relation_id_list[i]) { // if active
+						let myrel = this.relation_database[this.relation_id_list[i]];
+            if(myrel.first.indexOf(new_relator) >= 0) {
+              this.relstack_t.push(myrel);
+              this.relation_id_list[i] = 0; // obsolete
+            }
+            else if(myrel.second.indexOf(new_relator) >= 0) {
+							let reduced = this.reduce_word_t(myrel.second);
+							let reduced_rel = new Relation_t(myrel.first, reduced[0], myrel.hist_ascend, myrel.hist_descend.concat(reduced[1]));
+							this.relation_database.push(reduced_rel);
+							this.relation_id_list[i] = this.relation_database.length - 1;
+            }
+          }
+        }
+      }
+    }
+		this.resolve_count++;
+  }
+
+	// resolve duplicated relations
+	reduce_relations_t() {
+		// stack all relations in relation list
+		for(const rel_id of this.relation_id_list) {
+			this.relstack_t.push(this.relation_database[rel_id]);
+		}
+    this.relation_id_list.splice(0); // clear all
+		this.resolve_relstack_t();
+	}
+
+  resolve_overlap_t(reli_id, relj_id, overlap_limit) {
+		// in case relation_database is empty due to mistake
+		if(!reli_id || !relj_id) return;
+
+		let reli = this.relation_database[reli_id];
+		let relj = this.relation_database[relj_id];
+
+    for(let k = 1; k < reli.first.length && k < relj.first.length; k++) {
+			// ignore long overlap if the length limit is specified
+			if(overlap_limit && reli.first.length + relj.first.length - k > overlap_limit) continue;
+      if(reli.first.substr(reli.first.length - k) === relj.first.substr(0, k)) {
+        this.relstack_t.push(new Relation_t(reli.first.substr(0, reli.first.length - k) + relj.second, reli.second + relj.first.substr(k), [[reli.first.length - k, relj_id]], [[0, reli_id]]));
+        this.resolve_relstack_t();
+      }
+    }
+  }
+  
+  Knuth_Bendix_t(maxresolution = 10000, overlap_limit = 0)
+    {
+			// initialize
+			this.relation_database = [new Relation_t("", "", [], [])];
+			this.relation_id_list = [];
+			this.relstack_t = [];
+
+			// set initial relations
+			let counter = 1;
+			for(const rel of this.relations) {
+				let rel_t = new Relation_t(rel.first, rel.second, [], []);
+				this.relation_database.push(rel_t);
+				rel_t = new Relation_t(rel.first, rel.second, [], [[0, counter]]);
+				this.relstack_t.push(rel_t);
+				counter++;
+			}
+			this.relstack_t.reverse();
+
+      this.reduce_relations_t();
+			this.resolve_count = 0;
+
+      let i = 0;
+      while(i < this.relation_id_list.length) {
+        let j = 0;
+        let reli = this.relation_id_list[i];
+				if(!reli) {
+					i++;
+					continue;
+				}
+        
+        if(maxresolution && this.resolve_count > maxresolution) break;
+				if(overlap_limit && overlap_limit < this.relation_database[reli].first.length) {
+					i++;
+					continue;
+				}
+        while(j <= i && reli) {
+					reli = this.relation_id_list[i];
+          let relj = this.relation_id_list[j];
+					if(!relj) {
+						j++;
+						continue;
+					}
+
+          if(maxresolution && this.resolve_count > maxresolution) break;
+					if(overlap_limit && overlap_limit < this.relation_database[relj].first.length) {
+						j++;
+						continue;
+					}
+
+          this.resolve_overlap_t(reli, relj, overlap_limit);
+          if(j < i) this.resolve_overlap_t(relj, reli, overlap_limit);
+          j++;
+        }
+        i++;
+      }
+
+      // remove inactive relations
+      this.relation_id_list = this.relation_id_list.filter( function (rel) {
+        return rel;
+      });
+    }
+
+	trace_relation(rel_id, shallow = true) {
+		if(!rel_id || rel_id >= this.relation_database.length) return;
+		
+		let ascend = [];
+		let descend = [[0, rel_id]];
+
+		let cursor = 0;
+		let is_ascending = false;
+		let stack_direction = false;
+
+		let stack = [];
+		let word = this.relation_database[rel_id].first;
+		let goal = this.relation_database[rel_id].second;
+		let history = [];
+		let abs_pos = 0;
+
+		while(true) {
+			let operation;
+			if(is_ascending) operation = ascend[cursor];
+			else operation = descend[cursor];
+
+			let rel_begin = operation[0];
+			let rel_id = operation[1];
+			let rel = this.relation_database[rel_id];
+
+			if(rel_id <= this.relations.length || (shallow && stack.length >= 1)) { // initial relation
+				if(is_ascending) { // use the relation left to right
+					history.push([word, abs_pos + rel_begin, rel.second, rel.first, this.name, rel_id]);
+					word = word.substr(0, abs_pos + rel_begin) + rel.first + word.substr(abs_pos + rel_begin + rel.second.length);
+				}
+				else {
+					history.push([word, abs_pos + rel_begin, rel.first, rel.second, this.name, rel_id]);
+					word = word.substr(0, abs_pos + rel_begin) + rel.second + word.substr(abs_pos + rel_begin + rel.first.length);
+				}
+				
+				if(is_ascending) {
+					cursor--;
+				}
+				else {
+					cursor++;
+				}
+			}
+			else { // rel_id is not initial
+				stack.push([rel_begin, ascend, descend, cursor, is_ascending]);
+				stack_direction ^= is_ascending;
+				if(!is_ascending) {
+					ascend = rel.hist_ascend;
+					descend = rel.hist_descend;
+				}
+				else { // use the relation right to left!
+					descend = rel.hist_ascend;
+					ascend = rel.hist_descend;
+				}
+				abs_pos += rel_begin;
+				
+				if(ascend.length) {
+					is_ascending = true;
+					cursor = ascend.length - 1;
+				}
+				else {
+					is_ascending = false;
+					cursor = 0;
+				}
+			}
+
+			while(true) {
+				if(is_ascending && cursor < 0) {
+					is_ascending = false;
+					cursor = 0;
+				}
+				
+				if(!is_ascending && cursor >= descend.length) {
+					if(stack.length) {
+						let parent_state = stack.pop();
+						abs_pos -= parent_state[0];
+						ascend = parent_state[1];
+						descend = parent_state[2];
+						cursor = parent_state[3];
+						is_ascending = parent_state[4];
+						stack_direction ^= is_ascending;
+
+						if(is_ascending) cursor--;
+						else cursor++;
+					}
+					else break;
+				}
+				else break;
+			}
+			if(!stack.length) break;
+		}
+		
+		history.push([goal, -1, "", "", ""]);
+		return history;
 	}
 }
 

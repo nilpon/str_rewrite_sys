@@ -154,7 +154,7 @@
 		set_br(cntarea);
 		set_text(cntarea, "※「処理の最大実行回数」のほうがより確実に処理時間を制御できます。");
 		set_br(cntarea);
-		set_text(cntarea, "※許容するoverlapの長さを増やすと、処理時間が急速に増大する場合があるので、本当に必要になるまでは増やさないほうがよいでしょう。");
+		set_text(cntarea, "※調べるoverlapの長さを増やすと、処理時間が急速に増大する場合があるので、本当に必要になるまでは増やさないほうがよいでしょう。");
 		set_br(cntarea);
 		set_text(cntarea, "※そもそも合流的な有限関係式系が存在しない、永遠に計算不能な例が実在します。");
 		set_br(cntarea);
@@ -305,8 +305,8 @@
 console.time("confluence");
 		is_confl = mon.confluence();
 console.timeEnd("confluence");
-		if(!is_confl) alert("合流的ですO(^o^)O");
-		else alert("合流的じゃない;O(>o<)O;\nfailed at: " + is_confl);
+		if(!is_confl) alert("合流的です○(^o^)○");
+		else alert("合流的じゃない;○(>o<)○;\nfailed at: " + is_confl);
 	}
 
 	function set_mon() {
@@ -736,7 +736,10 @@ console.timeEnd("confluence");
 				if(!left.length) left = "ε";
 				let right = hist[3];
 				if(!right.length) right = "ε";
-				set_span_text(history_area, " :" + left + " = " + right + " @" + hist[4]).style.marginLeft = "" + (220 - cur_line.getBoundingClientRect().width % 200) + "px";
+				let rel_id = hist[5];
+				if(rel_id) rel_id = " (" + rel_id + ")";
+				else rel_id = " :";
+				set_span_text(history_area, rel_id + left + " = " + right + " @" + hist[4]).style.marginLeft = "" + (220 - cur_line.getBoundingClientRect().width % 200) + "px";
 				set_br(history_area);
 			}
 			else {
