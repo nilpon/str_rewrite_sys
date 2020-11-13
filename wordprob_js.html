@@ -437,7 +437,6 @@ console.timeEnd("confluence");
 			for(let i = 0; i < (1 << selectedrellist.length) - 1; i++) {
 				let sublist = fixedrellist.slice();
 				let submonname = name_cand;
-				console.log(i);
 				for(let j = 0; j < selectedrellist.length; j++) {
 					if(i & (1<<j)) {
 						submonname += selectedidlist[j];
@@ -783,6 +782,109 @@ console.timeEnd("confluence");
 		calc_history = [];
 		view_calc();
 	}
+
+function randomint(n) {
+  return (Math.random() * n) | 0;
+}
+
+function randomword(n, letters) {
+  let str = "";
+  for(let i = 0; i < n; i++) {
+    str += letters[randomint(letters.length)];
+  }
+  return str;
+}
+
+function gen_random_monoid(n_gen, n_rels) {
+	const letters = "abcdefghijklmnopqrstuvwxyz";
+	if(n_gen > letters.length) return;
+	
+	mon.remove_all_relations();
+	for(let len = 0; len < n_rels.length; len++) {
+		for(let i = 0; i < n_rels[len]; i++) {
+			mon.add_relation(randomword(len + 2, letters.substr(0, n_gen)), "");
+		}
+	}
+}
+
+function testKB() {
+	console.time("Knuth-Bendix_t");
+	mon.Knuth_Bendix_t(resol_max, max_overlap);
+	console.timeEnd("Knuth-Bendix_t");
+
+	let is_trivial = true;
+	for(const rel_id of mon.relation_id_list) {
+		let rel = mon.relation_database[rel_id];
+		if(rel.first.length != 1 || rel.second.length) {
+			is_trivial = false;
+			break;
+		}
+	}
+	if(is_trivial) console.log("○(^o^)○ it's trivial!");
+	else console.log("○(;o;)○ nontrivial!");
+
+	console.log("n of formulas:" + mon.relation_database.length);
+
+	return is_trivial;
+}
+
+function gen_trivial_monoid(n_gen, n_rels, n_trial = 20) {
+	let is_trivial = false;
+	for(let trial = 0; trial < n_trial; trial++) {
+		while(true) {
+			gen_random_monoid(n_gen, n_rels);
+			if(mon.is_irreducible_system()) break;
+		}
+		is_trivial = testKB();
+		if(is_trivial) break;
+	}
+	return is_trivial;
+}
+
+// beaware when relation_database is large
+function show_formulas() {
+	calc_history = [];
+	for(let i = 1; i < mon.relation_database.length; i++) {
+		calc_history = calc_history.concat(mon.trace_relation(i));
+	}
+	console.log("history length:" + calc_history.length);
+}
+
+// suppose that relations are reduced
+// difficulty := number of moves to construct all the formula
+function difficulty() {
+	let dif = 0;
+	mon.Knuth_Bendix_t(resol_max, max_overlap);
+	for(let i = 1; i < mon.relation_database.length; i++) {
+		dif += mon.trace_relation(i).length;
+	}
+
+	return dif - 4*mon.relations.length;
+}
+
+function find_difficult_monoid(n_gen, n_rels, diff, n_trial = 20) {
+	let diflog = [];
+	for(let trial = 0; trial < n_trial; trial++) {	
+		let res = gen_trivial_monoid(n_gen, n_rels, 100);
+		if(res) {
+			diflog.push(difficulty());
+			if(diflog[diflog.length - 1] >= diff) break;
+		}
+	}
+
+	return diflog;
+}
+
+
+// DO *NOT* RUN THIS when relation_database is large,
+// otherwise it may consume all the memory!
+function show_trivializing_solution() {
+	calc_history = [];
+	for(const rel_id of mon.relation_id_list) {
+		calc_history = calc_history.concat(mon.trace_relation(rel_id, false));
+	}
+	console.log("history length:" + calc_history.length);
+}
 
 /*
 	function btn_auto_reduce() {

@@ -1,1 +1,13 @@
 trivial1<bc=ac&da=bb&abc=cd&dac=>
+trivial2<bd=&aac=&bba=&dca=>
+trivial3<dbd=&dab=&aacd=&abbb=&ddad=>
+trivial4<dddb=&eaba=&bdac=&cbbcb=&eecab=&decbe=&ccbcc=>
+trivial5<bdb=&ggf=&ggdg=&bdgg=&fbab=>
+trivial6<cab=&acbc=&ccbc=>
+trivial7<baa=&aaba=>
+trivial8<dadc=&bcba=&acca=&bbcab=&dbbcc=&bdddc=>
+trivial9<cd=&add=&caab=&acbda=>
+trivial10<bdc=&baa=&dbca=&acdd=>
+trivial11<dbc=&aac=&cabd=&badd=>
+trivial12<ac=&bba=&aabc=>
+trivial13<bbab=&ccbd=&bbcad=&acddc=>

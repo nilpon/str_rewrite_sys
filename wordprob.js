@@ -380,6 +380,11 @@ class Monoid {
 		this.relator_changed = true;
 	}
 
+	remove_all_relations() {
+		this.relations = [];
+		this.relator_changed = true;
+	}
+
 	_left_generator_list() {
 		let myindex = 0;
 		for(const rel of this.relations) {
