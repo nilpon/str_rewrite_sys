@@ -722,5 +722,37 @@ class Monoid {
 		history.push([goal, -1, "", "", ""]);
 		return history;
 	}
+
+	count_weight_of_relation(basic_weight_list, usable_relations) {
+		let weight_list = new Array(this.relation_database.length);
+		
+		for(let i = 0; i < this.relations.length; i++) {
+			if(!basic_weight_list || basic_weight_list.length < this.relations.length) {
+				weight_list[i + 1] = 1;
+			}
+			else {
+				weight_list[i + 1] = basic_weight_list[i];
+			}
+		}
+
+		for(let i = this.relations.length + 1; i < this.relation_database.length; i++) {
+			let rel = this.relation_database[i];
+			let counter = 0;
+			
+			for(const hist of rel.hist_ascend) {
+				counter += weight_list[hist[1]];
+			}
+			for(const hist of rel.hist_descend) {
+				counter += weight_list[hist[1]];
+			}
+
+			if(usable_relations && usable_relations.includes(i)) {
+				counter = 1;
+			}
+			weight_list[i] = counter;
+		}
+		
+		return weight_list;
+	}
 }
 

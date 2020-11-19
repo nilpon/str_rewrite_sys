@@ -37,6 +37,7 @@
 	let tab_working_area = Tab.new("working_area");
 	let page_relation = construct_relation_page();
 	let page_calc = construct_calc_page();
+	let page_formula = construct_formula_page();
 	let page_conf = construct_config_page();
 	let page_save = construct_save_page();
 
@@ -123,7 +124,7 @@
 		set_button(cntarea, "全組合せで生成", "btn_gen_submon_all()");
 
 		set_div(cntarea, "relation_view");
-		return Tab.newpage(tab_working_area, "関係式一覧", cntarea.innerHTML, page_update);
+		return Tab.newpage(tab_working_area, "定義関係式", cntarea.innerHTML, page_update);
 	}
 
 	function construct_save_page() {
@@ -179,6 +180,14 @@
 		set_div(cntarea, "manip_area");
 
 		return Tab.newpage(tab_working_area, "計算", cntarea.innerHTML, on_move_to_calc_page);
+	}
+
+	function construct_formula_page() {
+		let cntarea = document.createElement("div");
+		
+		set_div(cntarea, "formula_list_area", "history_area");
+
+		return Tab.newpage(tab_working_area, "公式一覧", cntarea.innerHTML, on_move_to_calc_page);
 	}
 
 	function btn_add_relation() {
@@ -571,7 +580,7 @@ console.timeEnd("confluence");
 	}
 
 	function view_calc() {
-		draw_history();
+		draw_history("history_area", calc_history);
 		draw_manip_candicates();
 	}
 
@@ -708,13 +717,13 @@ console.timeEnd("confluence");
 	}
 
 
-	function draw_history() {
-		let history_area = document.getElementById("history_area");
+	function draw_history(area_id, histdata) {
+		let history_area = document.getElementById(area_id);
 		if(!history_area) return;
 		history_area.innerHTML = "";
 
 		let is_first = true;
-		for(const hist of calc_history) {
+		for(const hist of histdata) {
 			let cur_line = set_span_text(history_area, "");
 			if(!is_first) {
 				set_text(cur_line, " = ");
@@ -799,84 +808,131 @@ function gen_random_monoid(n_gen, n_rels) {
 	const letters = "abcdefghijklmnopqrstuvwxyz";
 	if(n_gen > letters.length) return;
 	
-	mon.remove_all_relations();
+	let random_mon = new Monoid;
 	for(let len = 0; len < n_rels.length; len++) {
 		for(let i = 0; i < n_rels[len]; i++) {
-			mon.add_relation(randomword(len + 2, letters.substr(0, n_gen)), "");
+			random_mon.add_relation(randomword(len + 2, letters.substr(0, n_gen)), "");
 		}
 	}
+
+	return random_mon;
 }
 
-function testKB() {
-	console.time("Knuth-Bendix_t");
-	mon.Knuth_Bendix_t(resol_max, max_overlap);
-	console.timeEnd("Knuth-Bendix_t");
+function testKB(random_mon, showlog = false) {
+	if(showlog) console.time("Knuth-Bendix_t");
+	random_mon.Knuth_Bendix_t(resol_max, max_overlap);
+	if(showlog) console.timeEnd("Knuth-Bendix_t");
 
 	let is_trivial = true;
-	for(const rel_id of mon.relation_id_list) {
-		let rel = mon.relation_database[rel_id];
+	for(const rel_id of random_mon.relation_id_list) {
+		let rel = random_mon.relation_database[rel_id];
 		if(rel.first.length != 1 || rel.second.length) {
 			is_trivial = false;
 			break;
 		}
 	}
-	if(is_trivial) console.log("○(^o^)○ it's trivial!");
-	else console.log("○(;o;)○ nontrivial!");
 
-	console.log("n of formulas:" + mon.relation_database.length);
+	if(showlog) {
+		if(is_trivial) console.log("〇(^o^)〇 it's trivial!");
+		else console.log("〇(;o;)〇 nontrivial!");
+		console.log("n of formulas:" + random_mon.relation_database.length);
+	}
 
 	return is_trivial;
 }
 
 function gen_trivial_monoid(n_gen, n_rels, n_trial = 20) {
 	let is_trivial = false;
+	let random_mon;
 	for(let trial = 0; trial < n_trial; trial++) {
 		while(true) {
-			gen_random_monoid(n_gen, n_rels);
-			if(mon.is_irreducible_system()) break;
+			random_mon = gen_random_monoid(n_gen, n_rels);
+			if(random_mon.is_irreducible_system()) {
+				let all_letters = "";
+				for(const rel of random_mon.relations) {
+					all_letters += rel.first;
+				}
+				if((new Set(all_letters)).size >= n_gen) break;
+			}
 		}
-		is_trivial = testKB();
+		is_trivial = testKB(random_mon);
 		if(is_trivial) break;
 	}
-	return is_trivial;
+	if(is_trivial) return random_mon;
+	// return undefined if failed!
 }
 
 // beaware when relation_database is large
-function show_formulas() {
+function show_formulas(random_mon) {
 	calc_history = [];
-	for(let i = 1; i < mon.relation_database.length; i++) {
-		calc_history = calc_history.concat(mon.trace_relation(i));
+	for(let i = 1; i < random_mon.relation_database.length; i++) {
+		calc_history = calc_history.concat(random_mon.trace_relation(i));
 	}
 	console.log("history length:" + calc_history.length);
 }
 
 // suppose that relations are reduced
 // difficulty := number of moves to construct all the formula
-function difficulty() {
+function difficulty(random_mon) {
 	let dif = 0;
-	mon.Knuth_Bendix_t(resol_max, max_overlap);
-	for(let i = 1; i < mon.relation_database.length; i++) {
-		dif += mon.trace_relation(i).length;
+	if(!random_mon.relation_id_list.length) {
+console.log("(><;)");
+		random_mon.Knuth_Bendix_t(resol_max, max_overlap);
+	}
+	for(let i = 1; i < random_mon.relation_database.length; i++) {
+		dif += random_mon.trace_relation(i).length;
 	}
 
-	return dif - 4*mon.relations.length;
+	return dif - 4*random_mon.relations.length;
 }
 
-function find_difficult_monoid(n_gen, n_rels, diff, n_trial = 20) {
+function find_difficult_monoid(n_gen, n_rels, n_trial = 20) {
 	let diflog = [];
+	let difficultest;
+	let max_dif = 0;
 	for(let trial = 0; trial < n_trial; trial++) {	
 		let res = gen_trivial_monoid(n_gen, n_rels, 100);
 		if(res) {
-			diflog.push(difficulty());
-			if(diflog[diflog.length - 1] >= diff) break;
+			let cur_dif = difficulty(res);
+console.log("trial " + trial + ": " + cur_dif);
+			diflog.push(cur_dif);
+			if(cur_dif > max_dif) {
+				difficultest = res;
+				max_dif = cur_dif;
+			}
 		}
 	}
+	console.log("difficultest: " + max_dif);
 
-	return diflog;
+	return [difficultest, diflog.sort((a,b)=>b-a)];
 }
 
 
-// DO *NOT* RUN THIS when relation_database is large,
+function gen_many_monoids(n_gen, n_rels, n_trial = 20, min_dif = 0) {
+	let monoid_list = [];
+	for(let trial = 0; trial < n_trial; trial++) {	
+		let res = gen_trivial_monoid(n_gen, n_rels, 100);
+		if(res) {
+			let cur_dif = difficulty(res);
+console.log("trial " + trial + ": " + cur_dif);
+			res.name = "gen" + n_gen + "[" + n_rels + "]_lv" + cur_dif;
+			if(min_dif <= cur_dif) monoid_list.push([res, cur_dif]);
+		}
+	}
+
+	monoid_list.sort((a,b) => a[1] - b[1]);
+
+	let res = [];
+
+	for(const entry of monoid_list) {
+		res.push(entry[0]);
+	}
+
+	return res;
+}
+
+// YOU MUST ESTIMATE the number of steps for trivialization
+// using count_weight_of_relation(),
 // otherwise it may consume all the memory!
 function show_trivializing_solution() {
 	calc_history = [];
@@ -884,6 +940,18 @@ function show_trivializing_solution() {
 		calc_history = calc_history.concat(mon.trace_relation(rel_id, false));
 	}
 	console.log("history length:" + calc_history.length);
+}
+
+function list_formulas(mon) {
+	let res = "";
+
+	for(const rel of mon.relation_database) {
+		res += rel.first;
+		if(rel.second) res += "=" + rel.second;
+		res += " ";
+	}
+
+	return res;
 }
 
 /*

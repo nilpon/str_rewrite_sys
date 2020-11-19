@@ -11,3 +11,9 @@ trivial10<bdc=&baa=&dbca=&acdd=>
 trivial11<dbc=&aac=&cabd=&badd=>
 trivial12<ac=&bba=&aabc=>
 trivial13<bbab=&ccbd=&bbcad=&acddc=>
+difficult765<cdd=&bca=&bdac=&badb=>
+difficultest64<ac=&bba=&aabc=>
+189<cbc=&aca=&ddba=&bdca=>
+2454<cbe=&eda=&caa=&eebc=&dbad=>
+786<ac=&ead=&abc=&baeb=&daee=>
+653<abc=&dac=&addc=&badb=>
