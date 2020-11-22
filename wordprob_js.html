@@ -103,6 +103,14 @@
 		elem.appendChild(btn);
 	}
 
+	function set_file_selector(elem, id) {
+		let selector = document.createElement("input");
+		selector.setAttribute("type", "file");
+		if(id) selector.setAttribute("id", id);
+
+		elem.appendChild(selector);
+	}
+
 	function construct_relation_page() {
 		let cntarea = document.createElement("div");
 
@@ -131,10 +139,11 @@
 		let cntarea = document.createElement("div");
 
 		set_text(cntarea, "セーブデータ:");
-		set_textbox(cntarea, "save_txtbox", "", "this.select()");
+		set_button(cntarea, "エクスポート", "btn_export()");
 		set_button(cntarea, "インポート", "btn_import()");
+		set_file_selector(cntarea, "savefile_btn");
 
-		return Tab.newpage(tab_working_area, "セーブ", cntarea.innerHTML, btn_export);
+		return Tab.newpage(tab_working_area, "セーブ", cntarea.innerHTML);
 	}
 
 	function construct_config_page() {
@@ -476,18 +485,18 @@ console.timeEnd("confluence");
 			for(const rel of monlist[i].relations) {
 				monlist_data += rel.first + "=" + rel.second + "&";
 			}
-			monlist_data += ">";
+			monlist_data += ">\n";
 		}
 		monlist_data = monlist_data.replace(/&>/g, ">");
 
-		let txtbox = document.getElementById("save_txtbox");
-
-		if(txtbox) txtbox.setAttribute("value", monlist_data);
+		let blob = new Blob([monlist_data], {type:"text/plain"});
+		let export_link = document.createElement("a");
+		export_link.href = URL.createObjectURL(blob);
+		export_link.download = "monoid_data.txt";
+		export_link.click();
 	}
 
-	function btn_import() {
-		let importraw = document.getElementById("save_txtbox").value;
-		if(importraw) {
+	function load_savedata(importraw) {
 			let import_monlist = importraw.split(">");
 			let new_monlist = [];
 			for(const montxt of import_monlist) {
@@ -528,6 +537,20 @@ console.timeEnd("confluence");
 
 				alert("インポートしました！");
 			}
+	}
+
+	function btn_import() {
+		let savefile = document.getElementById("savefile_btn");
+
+		if(savefile.files[0]) {
+			var reader = new FileReader();
+			reader.onload = function(evt) {
+				load_savedata(evt.target.result.replace(/[\r\n]/g, ""));
+			}
+			reader.readAsText(savefile.files[0]);
+		}
+		else {
+			alert("ファイルを選んでね！");
 		}
 	}
 
@@ -818,6 +841,18 @@ function gen_random_monoid(n_gen, n_rels) {
 	return random_mon;
 }
 
+function gen_random_monoid_ext(n_gen, n_rels_ext) {
+	const letters = "abcdefghijklmnopqrstuvwxyz";
+	if(n_gen > letters.length) return;
+	
+	let random_mon = new Monoid;
+	for(let len = 0; len < n_rels_ext.length; len++) {
+		random_mon.add_relation(randomword(n_rels_ext[len][0], letters.substr(0, n_gen)), randomword(n_rels_ext[len][1], letters.substr(0, n_gen)));
+	}
+
+	return random_mon;
+}
+
 function testKB(random_mon, showlog = false) {
 	if(showlog) console.time("Knuth-Bendix_t");
 	random_mon.Knuth_Bendix_t(resol_max, max_overlap);
@@ -841,12 +876,13 @@ function testKB(random_mon, showlog = false) {
 	return is_trivial;
 }
 
-function gen_trivial_monoid(n_gen, n_rels, n_trial = 20) {
+function gen_trivial_monoid(n_gen, n_rels, n_trial = 20, is_ext = false) {
 	let is_trivial = false;
 	let random_mon;
 	for(let trial = 0; trial < n_trial; trial++) {
 		while(true) {
-			random_mon = gen_random_monoid(n_gen, n_rels);
+			if(is_ext) random_mon = gen_random_monoid_ext(n_gen, n_rels);
+			else random_mon = gen_random_monoid(n_gen, n_rels);
 			if(random_mon.is_irreducible_system()) {
 				let all_letters = "";
 				for(const rel of random_mon.relations) {
@@ -908,10 +944,10 @@ console.log("trial " + trial + ": " + cur_dif);
 }
 
 
-function gen_many_monoids(n_gen, n_rels, n_trial = 20, min_dif = 0) {
+function gen_many_monoids(n_gen, n_rels, n_trial = 20, min_dif = 0, is_ext = false) {
 	let monoid_list = [];
 	for(let trial = 0; trial < n_trial; trial++) {	
-		let res = gen_trivial_monoid(n_gen, n_rels, 100);
+		let res = gen_trivial_monoid(n_gen, n_rels, 100, is_ext);
 		if(res) {
 			let cur_dif = difficulty(res);
 console.log("trial " + trial + ": " + cur_dif);
