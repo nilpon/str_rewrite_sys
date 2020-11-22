@@ -4,17 +4,23 @@ This is a simple simulator of [string rewriting system](https://en.wikipedia.org
 
 ## Usage
 
-### str_rewrite_sys.html
-* Header
-名前変更(rename) button changes the name of current monoid.
-新規(new) button creates new monoid.
-削除(delete) button delete current monoid.
-全削除(delete all) button wipes all monoid data.
+### [`str_rewrite_sys.html`](str_rewrite_sys.html)
 
-* 定義関係式(Defining relations)
-You can set defining relation of monoid at 新しい関係式(new relation) text box.
-Just input preferred relation and push 追加(add) button.
+#### Header
+`名前変更`(rename) button changes the name of current monoid.
+
+`新規`(new) button creates new monoid.
+
+`削除`(delete) button delete current monoid.
+
+`全削除`(delete all) button wipes all monoid data.
+
+#### `定義関係式`(Defining relations) tab
+You can set defining relation of monoid at `新しい関係式`(new relation) text box.
+Just input preferred relation and push `追加`(add) button.
+
 Example: a relation "ab" = "ba" makes "a" and "b" commute.
+
 A relation "aaa" = "" means "a" has order 3.
 
 Each character is considered to denote an indeterminate.
@@ -22,83 +28,96 @@ Monoid data does not hold list of generators. A character which never appears
 in given relations is simply treated as an indetermiate having no relation with
 other indeterminates.
 
-生成元の位数(order of generators) button set the order of generators.
+`生成元の位数`(order of generators) button set the order of generators.
 First input generators which you want to set order, and input the order of
 generators in the second dialog.
-整列(sort) button sort relations by shortlex order.
-簡約(reduce) button reduces duplicated relations. This button executes
+
+`整列`(sort) button sort relations by shortlex order.
+
+`簡約`(reduce) button reduces duplicated relations. This button executes
 `TEST_2` in Sims's textbook. After applying this, each left side of relations
 does not include any of other left side.
+
 Example: The two relations c = a, xcy = b have redundancy: the left side "xcy"
 includes another left side "c" as proper substring. `TEST_2` reduces this
 redundancy, in this example it outputs new system of relations: c = a, xay = b.
 
-Knuth-Bendix button executes Knuth-Bendix procedure.
-CAUTION: This procedure may NOT TERMINATE! You can set some restriction
-parameters at 設定(configulation) tab. See 設定(configulation) section for more
+`Knuth-Bendix` button executes Knuth-Bendix procedure.
+CAUTION: This procedure may **NOT TERMINATE!** You can set some restriction
+parameters at `設定`(configulation) tab. See `設定`(configulation) section for more
 detail.
-Currently, Knuth-Bendix button OVERWRITE original defining relations.
 
-全選択(select all) selects all relations of current monoid.
-消去(erase) erases selected relations.
-合流的か?(is confluent) button examine whether current set of defining
+Currently, `Knuth-Bendix` button OVERWRITE original defining relations.
+
+`全選択`(select all) selects all relations of current monoid.
+
+`消去`(erase) erases selected relations.
+
+`合流的か?`(is confluent) button examine whether current set of defining
 relations is confluent. Roughly speaking, confluent means that if you rewrite
 a word using relations (only replacing left side to right side is allowed),
 at last you will obtain same word regardless of the order of applying
 relations.
+
 Example: The set of two relations c = a, c = b is not confluent, because
 rewriting "c" using first relation yields the word "a", but on the other hand
 rewriting using second relation yields "b", thus the result of rewriting
 depends on the choice of relation to apply.
+
 The new set of relations c = b, b = a is confluent. In this case rewriting
 "c" terminates at the word "a" regardless of the rewriting process.
 
-派生Monoid生成(generate derived monoid) creates new monoid having only
+`派生Monoid生成`(generate derived monoid) creates new monoid having only
 the selected relations. You can backup relation list using this before
 executing Knuth-Bendix procedure.
 
-全組合せで生成(generate all combination of monoids) generates monoids whose
+`全組合せで生成`(generate all combination of monoids) generates monoids whose
 relations consists of not selected relations and combination of selected
 relations. ...useless and may be deleted in the future.
 
-* 計算(Calculation)
+#### `計算`(Calculation)
 You can rewrite word graphically here.
-If a word is inputted (and pushed "入力" button),
+If a word is inputted (and pushed `入力` button),
 applicable relations will be shown at the bottom of the page.
-You can apply preffered relation by pushing 適用(apply) button.
-元に戻す(rollback) button rollback the last manipulation.
-履歴をクリア(clear history) wipes the history of manipulation.
-If 逆変形(reverse) box is checked, reverse order rewriting (i.e. replacing
+You can apply preffered relation by pushing `適用`(apply) button.
+
+`元に戻す`(rollback) button rollbacks the last manipulation.
+
+`履歴をクリア`(clear history) wipes the history of manipulation.
+
+If `逆変形`(reverse) box is checked, reverse order rewriting (i.e. replacing
 right side to left side of relation) is enabled.
-When 挿入(insert) button is pressed, all candicates of positions of
+
+When `挿入`(insert) button is pressed, all candicates of positions of
 insertion will be shown. Re-pushing the button closes the list.
 
-* 公式一覧
+#### `公式一覧`(list of formulas)
 currently not implemented
 
-* 設定(Configulation)
+#### `設定`(Configulation)
 You can set restriction parameters of Knuth-Bendix procedure.
-Input preffered value and push 決定(apply) button to apply it.
+Input preffered value and push `決定`(apply) button to apply it.
 Please note that there exists monoids having **NO FINITE CONFLUENT SYSTEM** and
 Knuth-Bendix procedure **NEVER SUCCEEDS**.
 Also note that resulting system MAY NOT BE CONFLUENT due to the restriction.
-You can examine the confluence by 合流的か?(is confluent) button.
+You can examine the confluence by `合流的か?`(is confluent) button.
 
-簡約処理の最大実行回数(maximum number of applying reduction)
+`簡約処理の最大実行回数`(maximum number of applying reduction)
 restricts the number of executing `TEST_2` fuction during the procedure.
 Default value is 10000. You can somewhat reasonably restrict the execution
 time of Knuth-Bendix procedure by this option. The resulting system may not be
 confluent if this value is too small.
 
 BE CAREFUL, if this number increases, the execution time of the procedure
-may increase MORE THAN LINEARLY because each `TEST_2` consumes more time
+may increase **MORE THAN LINEARLY** because each `TEST_2` consumes more time
 when the number of relations increases. In general, there is NO UPPER BOUND
 of execution time, only the termination of `TEST_2` within finite time is
 guaranteed.
+
 Setting the number "0" means no limit. PLEASE NOTE that the procedure
 **MAY NOT TERMINATE FOREVER IF NO LIMITATION IS SET**.
 
-長いoverlapは無視する(ignore long overlap)
+`長いoverlapは無視する`(ignore long overlap)
 restricts the length of overlaps to be examined.
 Setting this value makes the execution time shorter, but the resulting system
 may not be confluent when too small value.
@@ -112,13 +131,15 @@ LIMIT IS SET** because in some weird cases enormous number of relations are
 generated when examining long overlaps.
 
 
-* セーブ(Save)
-エクスポート(export) button generates save file of monoid data.
-インポート(import) button load monoid data from selected file.
+#### `セーブ`(Save)
+`エクスポート`(export) button generates save file of monoid data.
+
+`インポート`(import) button load monoid data from selected file.
 The structure of save data is currently very simple.
 
 save file format:
-name_of_monoid<relation1_left=relation1_right&relation2_left=...>...
+
+`name_of_monoid<relation1_left=relation1_right&relation2_left=...>...`
 
 * Othe files
 	* str_rewrite_sys.js: core library of monoids
@@ -136,17 +157,19 @@ through longer words, and usually there exists words which cannot be made vanish
 even if the monoid defined by given relations is known to be trivial.
 This program deals with only rewriting system with generators "a", "b", "c", "d".
 
-usage: `./shortest_path [dumpname=/path/to/dumpfile maxdist=d maxlen=l] relation1_left=relation1_right ...`
+#### usage
 
-* options
-	*dumpname: output file name; output is created current directly by default.
-	*maxdist: search up to maxdist times of applications of relation; default is 0 (unlimited).
-	*maxlen: output about only words whose length is up to maxlen. default is 8.
+`./shortest_path [dumpname=/path/to/dumpfile maxdist=d maxlen=l] relation1_left=relation1_right ...`
+
+#### options
+	* dumpname: output file name; output is created current directly by default.
+	* maxdist: search up to maxdist times of applications of relation; default is 0 (unlimited).
+	* maxlen: output about only words whose length is up to maxlen. default is 8.
 	maxlen must be <= 15. BEAWARE that output file size is in proportional to 2^maxlen!
-	*relations: set relations. For relation of the form word="", "=" can be omitted.
+	* relations: set relations. For relation of the form word="", "=" can be omitted.
 	**only the words consists of "a", "b", "c", "d" is valid.**
 
-* memory requirement
+#### Memory requirement
 `shortest_path` consumes HUGE memory!
 It consumes at least 2.7GiB of memory. 
 This is because shortest_path holds vertex information (2 byte for each vertex)
@@ -176,9 +199,10 @@ The structure of output file may be changed near future.
 ### view_dump.cpp
 `view_dump` is a viewer for output file of `shortest_path`.
 
-usage: `view_dump /path/to/dumpfile [all stat]`
+#### usage
+`view_dump /path/to/dumpfile [all stat]`
 
-* options
+#### options
 	* all: output all infomation in the dumpfile. BEAWARE HUGE OUTPUT!
 	* stat: output statistics (number of vanishable words, distribution of length)
 
