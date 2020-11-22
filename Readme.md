@@ -4,7 +4,7 @@ This is a simple simulator of [string rewriting system](https://en.wikipedia.org
 
 ## Usage
 
-### [`str_rewrite_sys.html`](str_rewrite_sys.html)
+### [`str_rewrite_sys.html`](str_rewrite_sys.html) [HTML Preview](http://htmlpreview.github.io/?https://github.com/nilpon/wordprob_js/blob/main/str_rewrite_sys.html)
 
 #### Header
 `名前変更`(rename) button changes the name of current monoid.
