@@ -63,6 +63,8 @@ class Monoid {
 		this.relation_database = [new Relation_t("", "", [], [])]; // first element is dummy 
 		this.relation_id_list = [];
 		this.relstack_t = [];
+
+this.show_relation_list_history = false;
 	}
 
 	_check_update() {
@@ -562,6 +564,7 @@ class Monoid {
       if(reli.first.substr(reli.first.length - k) === relj.first.substr(0, k)) {
         this.relstack_t.push(new Relation_t(reli.first.substr(0, reli.first.length - k) + relj.second, reli.second + relj.first.substr(k), [[reli.first.length - k, relj_id]], [[0, reli_id]]));
         this.resolve_relstack_t();
+if(this.show_relation_list_history) console.log(this.list_formulas());
       }
     }
   }
@@ -586,7 +589,7 @@ class Monoid {
 
       this.reduce_relations_t();
 			this.resolve_count = 0;
-
+if(this.show_relation_list_history) console.log(this.list_formulas());
       let i = 0;
       while(i < this.relation_id_list.length) {
         let j = 0;
@@ -627,6 +630,21 @@ class Monoid {
         return rel;
       });
     }
+
+	list_formulas() {
+		let res = "";
+
+		for(const rel_id of this.relation_id_list) {
+			if(rel_id) {
+				let rel = this.relation_database[rel_id];
+				res += rel.first;
+				if(rel.second) res += "=" + rel.second;
+				res += " ";
+			}
+		}
+
+		return res;
+	}
 
 	trace_relation(rel_id, shallow = true) {
 		if(!rel_id || rel_id >= this.relation_database.length) return;

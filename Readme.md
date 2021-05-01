@@ -141,7 +141,7 @@ save file format:
 
 `name_of_monoid<relation1_left=relation1_right&relation2_left=...>...`
 
-* Othe files
+* Other files
 	* str_rewrite_sys.js: core library of monoids
 	* str_rewrite_sys.css: css file
 	* tab.js: tab interface
@@ -203,7 +203,7 @@ The structure of output file may be changed near future.
 `view_dump /path/to/dumpfile [all stat]`
 
 #### options
-	* all: output all infomation in the dumpfile. BEAWARE HUGE OUTPUT!
+	* all: output all information in the dumpfile. BEAWARE HUGE OUTPUT!
 	* stat: output statistics (number of vanishable words, distribution of length)
 
 Implimentation of dump options is still in progress and the usage above may be
@@ -211,7 +211,7 @@ changed near future.
 
 
 ## Example data
-The `example` directly contains some example data.
+The `example/` directory contains some example data.
 
 * [`basic_english_word.txt`](example/basic_english_word.txt)
 	Garbage; you can learn how to erase each letter of alphabet using basic words.

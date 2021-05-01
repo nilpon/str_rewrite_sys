@@ -26,7 +26,6 @@
 
 .history_area{
 	border:1px solid #888;
-	height: 20em;
 	white-space:nowrap;
 	overflow:scroll;
 }

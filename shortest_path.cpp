@@ -124,6 +124,7 @@ int main(int argc, char *argv[])
   uint64_t max_search_len = 8;
   uint64_t max_dist = 0;
   std::string dumpfilename;
+  bool only_attack_first_gen = false;
   
   uint16_t *strlist[max_len];
 
@@ -173,6 +174,10 @@ int main(int argc, char *argv[])
       }
       else if(l == "dumpname") {
         dumpfilename = r;
+        continue;
+      }
+      else if(l == "first_gen") {
+        only_attack_first_gen = true;
         continue;
       }
     }
@@ -325,7 +330,8 @@ int main(int argc, char *argv[])
       }
     }
   }
-  
+
+  bool first_gen_defeated = false;
   std::time_t last_clock = std::time(nullptr);
   while(reached_words.size()) {
     if(max_dist && distance >= max_dist) break;
@@ -352,6 +358,9 @@ int main(int argc, char *argv[])
               next_word = (next_word << (2*k)) + suffix;
               
               uint64_t next_word_len = i + index_list[r].delta_len;
+              if(only_attack_first_gen && next_word_len == 1) {
+                first_gen_defeated = true;
+              }
               if(next_word_len && !strlist[next_word_len - 1][next_word]) {
                 newly_reached_words.push_back(encode_id(next_word_len, next_word));
                 if(next_word_len <= max_search_len) total_reached_short++;
@@ -376,6 +385,7 @@ int main(int argc, char *argv[])
         }
       }
       if(total_reached_short >= n_target_str) break;
+      if(first_gen_defeated) break;
     }
     
     total_reached += newly_reached_words.size();
@@ -384,6 +394,7 @@ int main(int argc, char *argv[])
     newly_reached_words.clear();
     distance++;
     if(total_reached_short >= n_target_str) break;
+    if(first_gen_defeated) break;
   }
   std::cout << "analysis finished" << std::endl;
 
@@ -431,6 +442,11 @@ int main(int argc, char *argv[])
       item_count++;
     }
   }
+  
+  for(int i = 0; i < max_len; i++) {
+    delete [] strlist[i];
+  }
+  
   uint32_t path_data_size = shortest_path_data.size();
   std::cout << "data collection finished" << std::endl;
 
@@ -450,10 +466,6 @@ int main(int argc, char *argv[])
   dumpfile.close();
   
   std::cout << "dump finished" << std::endl;
-  
-  for(int i = 0; i < max_len; i++) {
-    delete [] strlist[i];
-  }
   
   return 0;
 }

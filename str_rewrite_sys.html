@@ -70,11 +70,14 @@
 		return elem.appendChild(txtbox);
 	}
 
-	function set_button(elem, txt, onclick) {
+	function set_button(elem, txt, onclick, id = null) {
 		let btn = document.createElement("input");
 		btn.setAttribute("type", "button");
 		btn.setAttribute("value", txt);
 		btn.setAttribute("onclick", onclick);
+		if(id) {
+			btn.setAttribute("id", id);
+		}
 
 		return elem.appendChild(btn);
 	}
@@ -124,7 +127,7 @@
 
 		set_button(cntarea, "整列", "btn_sort()");
 		set_button(cntarea, "簡約", "btn_reduce_relations()");
-		set_button(cntarea, "Knuth-Bendix", "btn_KB()");
+//		set_button(cntarea, "Knuth-Bendix", "btn_KB()");
 		set_button(cntarea, "全選択", "btn_selall()");
 		set_button(cntarea, "消去", "btn_erase()");
 		set_button(cntarea, "合流的か？", "btn_confluence()");
@@ -193,8 +196,12 @@
 
 	function construct_formula_page() {
 		let cntarea = document.createElement("div");
-		
-		set_div(cntarea, "formula_list_area", "history_area");
+		set_button(cntarea, "Knuth-Bendix", "btn_KB()");
+		set_button(cntarea, "合流的か？", "btn_confluence()");
+		set_checkbox(cntarea, "is_show_only_reduced_formulas", "show_formulas()");
+		set_text(cntarea, "簡約された関係式だけ表示");
+
+		set_div(cntarea, "formula_list_area");
 
 		return Tab.newpage(tab_working_area, "公式一覧", cntarea.innerHTML, on_move_to_calc_page);
 	}
@@ -247,6 +254,50 @@
 		}
 	};
 
+	function show_formulas() {
+		let rel_view = document.getElementById("formula_list_area");
+
+		if(rel_view) {
+			rel_view.innerHTML = "";
+			let chkbox = document.getElementById("is_show_only_reduced_formulas");
+			if(!chkbox) return;
+			let show_only_reduced_formulas = chkbox.checked;
+
+			for(let rel_id = 1; rel_id < mon.relation_database.length; rel_id++) {
+				if(mon.relation_id_list.includes(rel_id) || !show_only_reduced_formulas) {
+					let rel_line = set_div(rel_view, "rel_" + rel_id);
+					set_button(rel_line, "+", "show_proof(" + rel_id + ")", "btn_pf_" + rel_id);
+					
+					let rel = mon.relation_database[rel_id];
+					let relation_txt = "" + rel_id + ". ";
+					if(rel.second.length) {
+						relation_txt += rel.first + " = " + rel.second;
+					}
+					else {
+						relation_txt += rel.first + " = ε";
+					}
+					set_text(rel_line, relation_txt)
+				}
+			}
+		}
+	};
+
+	function show_proof(rel_id) {
+		let rel_line = document.getElementById("rel_" + rel_id);
+		let pf_btn  = document.getElementById("btn_pf_" + rel_id);
+		if(!pf_btn) return;
+
+		if(pf_btn.value == "+") {
+			pf_btn.value = "-";
+			set_div(rel_line, "pf_rel_" + rel_id, "history_area");
+			draw_history("pf_rel_" + rel_id, mon.trace_relation(rel_id));
+		}
+		else {
+			pf_btn.value = "+";
+			document.getElementById("pf_rel_" + rel_id).remove();
+		}
+	}
+
 	function show_monoid_list() {
 		let list_monoid = document.getElementById("list_monoid");
 		let selected = list_monoid.selectedIndex;
@@ -270,9 +321,9 @@
 
 	function btn_KB() {
 		console.time("Knuth-Bendix");
-		mon.Knuth_Bendix(resol_max, max_overlap);
+		mon.Knuth_Bendix_t(resol_max, max_overlap);
 		console.timeEnd("Knuth-Bendix");
-		page_update();
+		show_formulas();
 	}
 
 	function btn_reduce_relations() {
@@ -899,7 +950,7 @@ function gen_trivial_monoid(n_gen, n_rels, n_trial = 20, is_ext = false) {
 }
 
 // beaware when relation_database is large
-function show_formulas(random_mon) {
+function _show_formulas(random_mon) {
 	calc_history = [];
 	for(let i = 1; i < random_mon.relation_database.length; i++) {
 		calc_history = calc_history.concat(random_mon.trace_relation(i));
