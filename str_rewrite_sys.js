@@ -772,5 +772,70 @@ if(this.show_relation_list_history) console.log(this.list_formulas());
 		
 		return weight_list;
 	}
+
+	// for current relation_id_list
+	reduce_word_from_left_by_formulas(w) {
+    let result = w;
+		let database = this.relation_database
+
+		while(
+			this.relation_id_list.some(
+				function(rel_id) {
+					let relator_found = false;
+					let rel = database[rel_id];
+          if(rel.first.length) { // being .first empty means that it is not active
+						let ind = result.indexOf(rel.first);
+						if(ind >= 0) {
+							relator_found = true;
+							result = result.substr(0, ind) + rel.second + result.substr(ind + rel.first.length);
+						}
+          }
+          
+					return relator_found;
+				}
+			)
+		);
+
+    return result;
+  }
+
+	// return "" if confluent, otherwise return word where the confluence fails
+  confluence_naive_formulas() {
+    for(const rela_id of this.relation_id_list) {
+			let rela = this.relation_database[rela_id];
+      let strP = rela.first;
+      for(const relb_id of this.relation_id_list) {
+				let relb = this.relation_database[relb_id];
+        let strR = relb.first;
+        for(let i = 1; i <= strP.length; i++) {
+          let strB = strP.substr(strP.length - i, i);
+          let k = 0;
+          // k will be the length of largest common prefix of strB and strR
+          for(; k < i; k++) {
+            if(strB[k] !== strR[k]) break;
+          }
+          if(!k) continue; // not beginning of overlap
+          
+          // P = AUD, R = UE, B = UD
+          let strD = strB.substr(k);
+          let strE = strR.substr(k);
+          
+          if(!strD.length || !strE.length) {
+            let strA = strP.substr(0, strP.length - i);
+            let strU = strB.substr(0, k);
+            let strQ = rela.second;
+            let strS = relb.second;
+						
+            // test confluence of QE = PE = AUE = AR = AS or Q = P = AUD = ARD = ASD
+            if(this.reduce_word_from_left_by_formulas(strA + strS + strD) !== this.reduce_word_from_left_by_formulas(strQ + strE)) {
+              return strA + strS + strD + "=" + strA + strR + strD + strE + "=" + strQ + strE;
+            }
+          }
+        }
+      }
+    }
+    
+    return ""; // *confluent*!
+  }
 }
 

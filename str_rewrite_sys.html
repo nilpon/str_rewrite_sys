@@ -197,7 +197,8 @@
 	function construct_formula_page() {
 		let cntarea = document.createElement("div");
 		set_button(cntarea, "Knuth-Bendix", "btn_KB()");
-		set_button(cntarea, "合流的か？", "btn_confluence()");
+		set_button(cntarea, "合流的か？", "btn_confluence_formulas()");
+		set_button(cntarea, "新しいMonoidにコピー", "btn_copy_formulas()");
 		set_checkbox(cntarea, "is_show_only_reduced_formulas", "show_formulas()");
 		set_text(cntarea, "簡約された関係式だけ表示");
 
@@ -378,6 +379,14 @@ console.timeEnd("confluence");
 		else alert("合流的じゃない;○(>o<)○;\nfailed at: " + is_confl);
 	}
 
+	function btn_confluence_formulas() {
+console.time("confluence");
+		is_confl = mon.confluence_naive_formulas();
+console.timeEnd("confluence");
+		if(!is_confl) alert("合流的です○(^o^)○");
+		else alert("合流的じゃない;○(>o<)○;\nfailed at: " + is_confl);
+	}
+
 	function set_mon() {
 		let listbox = document.getElementById("list_monoid");
 		mon = monlist[listbox.options[listbox.selectedIndex].value];
@@ -460,6 +469,22 @@ console.timeEnd("confluence");
 			}
 			page_update();
 		}
+	}
+
+	function btn_copy_formulas() {
+		let list_monoid = document.getElementById("list_monoid");
+		let name_cand = monlist[list_monoid.selectedIndex].name + "_confluent";
+		let newrellist = [];
+		
+		for(const rel_id of mon.relation_id_list) {	
+			let reltoadd = mon.relation_database[rel_id];
+			newrellist.push(new Relation(reltoadd.first, reltoadd.second));
+		}
+		
+		if(btn_new_monoid(name_cand)) {
+				mon.relations = newrellist.slice();
+		}
+		page_update();
 	}
 
 	function btn_gen_submon_all() {
